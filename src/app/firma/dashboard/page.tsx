@@ -167,6 +167,10 @@ export default function FirmaDashboard() {
                         <SelectItem value="tir">Tır</SelectItem>
                         <SelectItem value="kamyon">Kamyon</SelectItem>
                         <SelectItem value="kamyonet">Kamyonet</SelectItem>
+                        <SelectItem value="treyler">Treyler</SelectItem>
+                        <SelectItem value="konteyner">Konteyner</SelectItem>
+                        <SelectItem value="swap-body">Swap Body</SelectItem>
+                        <SelectItem value="lowbed">Lowbed</SelectItem>
                         <SelectItem value="farketmez">Farketmez</SelectItem>
                       </SelectContent>
                     </Select>
@@ -232,5 +236,3 @@ export default function FirmaDashboard() {
     </div>
   );
 }
-
-    
