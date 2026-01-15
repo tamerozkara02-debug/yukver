@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Truck, LayoutDashboard, Users, UserCog, LogOut } from "lucide-react"
+import { Truck, LayoutDashboard, Users, UserCog, LogOut, Map } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/firebase"
 import { signOut } from "firebase/auth"
@@ -50,6 +50,14 @@ export default function AdminLayout({
                 <Link href="/admin/dashboard">
                   <LayoutDashboard />
                   <span>Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
+                <Link href="/admin/konum-takibi">
+                  <Map />
+                  <span>Konum Takibi</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
