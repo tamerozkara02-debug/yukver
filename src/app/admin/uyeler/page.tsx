@@ -23,8 +23,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { collection, doc } from "firebase/firestore"
-import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
+import { collection, doc, deleteDoc } from "firebase/firestore"
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
@@ -40,13 +39,13 @@ export default function AdminUyelerPage() {
   const handleDeleteFirm = (id: string) => {
     if (!firestore) return;
     const firmDoc = doc(firestore, 'firms', id);
-    deleteDocumentNonBlocking(firmDoc);
+    deleteDoc(firmDoc);
   };
 
   const handleDeleteDriver = (id: string) => {
     if (!firestore) return;
     const driverDoc = doc(firestore, 'drivers', id);
-    deleteDocumentNonBlocking(driverDoc);
+    deleteDoc(driverDoc);
   };
 
   const isLoading = isUserLoading || isLoadingFirms || isLoadingDrivers;

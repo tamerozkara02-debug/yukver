@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Building, LogOut, Phone, Send, CheckCircle } from "lucide-react";
-import { useAuth, useDoc, useFirestore, useUser, addDocumentNonBlocking } from "@/firebase";
+import { useAuth, useDoc, useFirestore, useUser } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, addDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 export default function FirmaDashboard() {
@@ -35,7 +35,7 @@ export default function FirmaDashboard() {
     if (!user || !firestore) return;
 
     const loadsCollection = collection(firestore, 'firms', user.uid, 'loads');
-    addDocumentNonBlocking(loadsCollection, {
+    addDoc(loadsCollection, {
         firmId: user.uid,
         loadInformation: loadInfo,
         originCity,

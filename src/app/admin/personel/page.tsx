@@ -16,18 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Edit, PlusCircle, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
-import { collection, doc } from "firebase/firestore"
+import { collection, doc, addDoc } from "firebase/firestore"
 import { useState } from "react"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
+import { deleteStaffUser } from "@/ai/flows/delete-staff-flow"
 
 export default function AdminPersonelPage() {
     const firestore = useFirestore();
@@ -36,7 +34,6 @@ export default function AdminPersonelPage() {
     const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     
-    // Wait until user is authenticated to create the query
     const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
     const { data: personel, isLoading } = useCollection(personelCollection);
     
@@ -52,21 +49,16 @@ export default function AdminPersonelPage() {
         }
 
         try {
-            // Create user in Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const newUser = userCredential.user;
 
-            // Add to roles_admin collection
             const newStaff = {
                 username: email,
-                id: newUser.uid, // Use Firebase UID as the document ID
+                id: newUser.uid,
             };
             
-            if (firestore && personelCollection) {
-                // Use setDoc with specific ID to match auth UID
-                const staffDoc = doc(firestore, 'roles_admin', newUser.uid);
-                // This is now a blocking call to ensure role is set before confirming
-                await addDocumentNonBlocking(personelCollection, newStaff);
+            if (personelCollection) {
+                await addDoc(personelCollection, newStaff);
             }
 
             toast({ title: 'Başarılı', description: 'Yeni personel eklendi.'});
@@ -77,13 +69,13 @@ export default function AdminPersonelPage() {
         }
     };
 
-    const handleDeleteStaff = (id: string) => {
-        if (firestore) {
-            const staffDoc = doc(firestore, 'roles_admin', id);
-            deleteDocumentNonBlocking(staffDoc);
-            // Note: This does not delete the user from Firebase Auth, only from the role collection.
-            // A more complete solution would involve a Cloud Function to handle user deletion.
+    const handleDeleteStaff = async (id: string) => {
+        try {
+            await deleteStaffUser({ userId: id });
             toast({ title: 'Başarılı', description: 'Personel silindi.' });
+        } catch (error: any) {
+            console.error("Error deleting staff:", error);
+            toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel silinemedi.' });
         }
     }
 

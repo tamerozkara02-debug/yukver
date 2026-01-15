@@ -9,10 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { placeholderImages } from "@/lib/placeholder-images";
 import { Camera } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useAuth, useFirestore, addDocumentNonBlocking } from "@/firebase";
+import { useAuth, useFirestore } from "@/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
-import { collection, doc, setDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function FirmaKayitPage() {
     const router = useRouter();

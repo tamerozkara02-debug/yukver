@@ -67,9 +67,6 @@ service cloud.firestore {
     /**
      * @description Manages Firm profile documents.
      * @path /firms/{firmId}
-     * @allow (create) A new user with UID 'firm_abc' can create their own profile at `/firms/firm_abc`.
-     * @deny (get) A user with UID 'driver_xyz' cannot read the profile at `/firms/firm_abc`.
-     * @principle Enforces self-creation and strict ownership for a user's root profile document.
      */
     match /firms/{firmId} {
       allow get: if isOwner(firmId) || isAdmin();
@@ -81,9 +78,6 @@ service cloud.firestore {
       /**
        * @description Manages Load documents owned by a specific Firm.
        * @path /firms/{firmId}/loads/{loadId}
-       * @allow (create) The firm 'firm_abc' can create a new load document in its own subcollection.
-       * @deny (list) The firm 'firm_xyz' cannot list the loads belonging to 'firm_abc'.
-       * @principle Restricts access to a user's own data tree and validates relational integrity.
        */
       match /loads/{loadId} {
         allow get: if isOwner(firmId) || isAdmin();
@@ -97,33 +91,23 @@ service cloud.firestore {
     /**
      * @description Manages Driver profile documents.
      * @path /drivers/{driverId}
-     * @allow (create) A new user with UID 'driver_abc' can create their own profile at `/drivers/driver_abc`.
-     * @deny (update) A firm with UID 'firm_xyz' cannot update the profile at `/drivers/driver_abc`.
-     * @principle Enforces self-creation and strict ownership for a user's root profile document.
      */
     match /drivers/{driverId} {
       allow get: if isOwner(driverId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(driverId) && request.resource.data.id == driverId;
-      // Allow driver to update their own location, or admin to update anything.
-      allow update: if (isExistingOwner(driverId) && request.resource.data.keys().hasOnly(['latitude', 'longitude', 'lastLocationUpdate'])) || isAdmin();
+      allow update: if (isOwner(driverId) && request.resource.data.keys().hasAll(['firstName', 'lastName', 'phoneNumber', 'vehicleType', 'vehiclePlate', 'profilePicture'])) || isAdmin();
       allow delete: if isExistingOwner(driverId) || isAdmin();
     }
 
     /**
      * @description Manages administrator roles. The existence of a document here grants admin privileges.
      * @path /roles_admin/{uid}
-     * @allow (create) An existing admin can create a document at `/roles_admin/new_admin_uid`.
-     * @deny (delete) A non-admin user cannot delete a document from this collection to revoke admin rights.
-     * @principle Secures administrative roles by ensuring only other admins can manage the list of administrators.
      */
     match /roles_admin/{uid} {
-      // An admin can see all roles, a user can see their own role document. This is required for the `isAdmin` function to work.
-      allow get: if isOwner(uid) || isAdmin();
+      allow get, read: if isOwner(uid) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      allow create, update, delete: if isAdmin();
     }
   }
 }
