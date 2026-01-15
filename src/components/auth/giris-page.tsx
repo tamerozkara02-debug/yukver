@@ -28,18 +28,21 @@ const roleDetails = {
         description: 'Yüklerinizi yönetmek için giriş yapın.',
         registerLink: '/kayit/firma',
         registerText: 'Kayıt Olun',
+        dashboard: '/firma/dashboard',
     },
     sofor: {
         name: 'Şoför',
         description: 'Yeni yük fırsatları için giriş yapın.',
         registerLink: '/kayit/sofor',
         registerText: 'Kayıt Olun',
+        dashboard: '/sofor/dashboard',
     },
     admin: {
         name: 'Personel',
         description: 'Yönetim paneline erişmek için giriş yapın.',
         registerLink: null,
         registerText: null,
+        dashboard: '/admin/dashboard',
     }
 }
 
@@ -74,9 +77,14 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             return false;
     }
 
-    const docRef = doc(firestore, docPath);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists();
+    try {
+        const docRef = doc(firestore, docPath);
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists();
+    } catch (error) {
+        console.error(`Error checking role '${expectedRole}' for user ${userId}:`, error);
+        return false;
+    }
   }
 
 
@@ -102,36 +110,35 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
                 title: 'Başarılı',
                 description: 'Giriş yapıldı, yönlendiriliyorsunuz...',
             });
-            router.push(`/${initialRole}/dashboard`);
+            router.push(details.dashboard);
         } else {
              await auth.signOut();
-             let roleName = '';
-             if (initialRole === 'firma') roleName = 'Firma';
-             if (initialRole === 'sofor') roleName = 'Şoför';
-             if (initialRole === 'admin') roleName = 'Personel';
              
-             // Check if user exists in other roles
+             let attemptedRoleName = details.name;
+             let existingRoleName: string | null = null;
+             
              const isFirma = await checkUserRole(user.uid, 'firma');
              if (isFirma) {
-                toast({ variant: 'destructive', title: 'Hatalı Rol', description: `Bu hesap bir Firma hesabıdır. Lütfen doğru sekmeden giriş yapın.` });
-                return;
+                existingRoleName = "Firma";
              }
              const isSofor = await checkUserRole(user.uid, 'sofor');
              if (isSofor) {
-                toast({ variant: 'destructive', title: 'Hatalı Rol', description: `Bu hesap bir Şoför hesabıdır. Lütfen doğru sekmeden giriş yapın.` });
-                 return;
+                existingRoleName = "Şoför";
              }
              const isAdmin = await checkUserRole(user.uid, 'admin');
                if (isAdmin) {
-                toast({ variant: 'destructive', title: 'Hatalı Rol', description: `Bu hesap bir Personel hesabıdır. Lütfen doğru sekmeden giriş yapın.` });
-                 return;
+                existingRoleName = "Personel";
              }
 
-             toast({
-                variant: 'destructive',
-                title: 'Hata',
-                description: 'Kullanıcı rolü bulunamadı veya yanlış. Lütfen yöneticinize başvurun.',
-            });
+            if (existingRoleName) {
+                 toast({ variant: 'destructive', title: 'Hatalı Rol', description: `Bu hesap bir ${existingRoleName} hesabıdır. Lütfen doğru sekmeden giriş yapın.` });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Hata',
+                    description: `Bu kimlik bilgileriyle bir '${attemptedRoleName}' hesabı bulunamadı.`,
+                });
+            }
         }
     } catch (error: any) {
          toast({
