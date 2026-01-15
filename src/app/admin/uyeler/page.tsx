@@ -22,20 +22,41 @@ import { Edit, PlusCircle, Trash2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase"
+import { collection, doc } from "firebase/firestore"
+import { deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 
-const firmalar = [
-  { id: 1, yetkili: "Ahmet Yılmaz", telefon: "555 123 4567", sehir: "İstanbul", ilce: "Kadıköy", durum: "Aktif" },
-  { id: 2, yetkili: "Ayşe Kaya", telefon: "555 987 6543", sehir: "Ankara", ilce: "Çankaya", durum: "Aktif" },
-  { id: 3, yetkili: "Fatma Demir", telefon: "555 456 1234", sehir: "İzmir", ilce: "Bornova", durum: "Pasif" },
-];
+// const firmalar = [
+//   { id: 1, yetkili: "Ahmet Yılmaz", telefon: "555 123 4567", sehir: "İstanbul", ilce: "Kadıköy", durum: "Aktif" },
+//   { id: 2, yetkili: "Ayşe Kaya", telefon: "555 987 6543", sehir: "Ankara", ilce: "Çankaya", durum: "Aktif" },
+//   { id: 3, yetkili: "Fatma Demir", telefon: "555 456 1234", sehir: "İzmir", ilce: "Bornova", durum: "Pasif" },
+// ];
 
-const soforler = [
-  { id: 1, adSoyad: "Mehmet Öztürk", telefon: "555 789 0123", aracTipi: "Kamyon", plaka: "34 ABC 123", durum: "Boşta" },
-  { id: 2, adSoyad: "Hasan Vural", telefon: "555 234 5678", aracTipi: "Tır", plaka: "06 DEF 456", durum: "Yolda" },
-  { id: 3, adSoyad: "Ali Can", telefon: "555 678 9012", aracTipi: "Kamyonet", plaka: "35 GHI 789", durum: "Boşta" },
-];
+// const soforler = [
+//   { id: 1, adSoyad: "Mehmet Öztürk", telefon: "555 789 0123", aracTipi: "Kamyon", plaka: "34 ABC 123", durum: "Boşta" },
+//   { id: 2, adSoyad: "Hasan Vural", telefon: "555 234 5678", aracTipi: "Tır", plaka: "06 DEF 456", durum: "Yolda" },
+//   { id: 3, adSoyad: "Ali Can", telefon: "555 678 9012", aracTipi: "Kamyonet", plaka: "35 GHI 789", durum: "Boşta" },
+// ];
 
 export default function AdminUyelerPage() {
+  const firestore = useFirestore();
+  const firmsCollection = useMemoFirebase(() => collection(firestore, 'firms'), [firestore]);
+  const driversCollection = useMemoFirebase(() => collection(firestore, 'drivers'), [firestore]);
+
+  const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
+  const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
+
+  const handleDeleteFirm = (id: string) => {
+    const firmDoc = doc(firestore, 'firms', id);
+    deleteDocumentNonBlocking(firmDoc);
+  };
+
+  const handleDeleteDriver = (id: string) => {
+    const driverDoc = doc(firestore, 'drivers', id);
+    deleteDocumentNonBlocking(driverDoc);
+  };
+
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -91,18 +112,19 @@ export default function AdminUyelerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {firmalar.map((firma) => (
+                  {isLoadingFirms && <TableRow><TableCell colSpan={6}>Yükleniyor...</TableCell></TableRow>}
+                  {firmalar && firmalar.map((firma: any) => (
                     <TableRow key={firma.id}>
-                      <TableCell className="font-medium">{firma.yetkili}</TableCell>
-                      <TableCell>{firma.telefon}</TableCell>
-                      <TableCell>{firma.sehir}</TableCell>
-                      <TableCell>{firma.ilce}</TableCell>
+                      <TableCell className="font-medium">{firma.firstName} {firma.lastName}</TableCell>
+                      <TableCell>{firma.phoneNumber}</TableCell>
+                      <TableCell>{firma.city}</TableCell>
+                      <TableCell>{firma.district}</TableCell>
                       <TableCell>
-                        <Badge variant={firma.durum === 'Aktif' ? 'default' : 'secondary'}>{firma.durum}</Badge>
+                        <Badge variant={'default'}>Aktif</Badge>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="icon"><Edit className="h-4 w-4"/></Button>
-                        <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4"/></Button>
+                        <Button variant="destructive" size="icon" onClick={() => handleDeleteFirm(firma.id)}><Trash2 className="h-4 w-4"/></Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -130,18 +152,19 @@ export default function AdminUyelerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {soforler.map((sofor) => (
+                  {isLoadingDrivers && <TableRow><TableCell colSpan={6}>Yükleniyor...</TableCell></TableRow>}
+                  {soforler && soforler.map((sofor: any) => (
                     <TableRow key={sofor.id}>
-                      <TableCell className="font-medium">{sofor.adSoyad}</TableCell>
-                      <TableCell>{sofor.telefon}</TableCell>
-                      <TableCell>{sofor.aracTipi}</TableCell>
-                      <TableCell>{sofor.plaka}</TableCell>
+                      <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
+                      <TableCell>{sofor.phoneNumber}</TableCell>
+                      <TableCell>{sofor.vehicleType}</TableCell>
+                      <TableCell>{sofor.vehiclePlate}</TableCell>
                       <TableCell>
-                         <Badge variant={sofor.durum === 'Boşta' ? 'default' : sofor.durum === 'Yolda' ? 'destructive' : 'secondary'}>{sofor.durum}</Badge>
+                         <Badge variant={'default'}>Boşta</Badge>
                       </TableCell>
                        <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="icon"><Edit className="h-4 w-4"/></Button>
-                        <Button variant="destructive" size="icon"><Trash2 className="h-4 w-4"/></Button>
+                        <Button variant="destructive" size="icon" onClick={() => handleDeleteDriver(sofor.id)}><Trash2 className="h-4 w-4"/></Button>
                       </TableCell>
                     </TableRow>
                   ))}

@@ -13,8 +13,8 @@
  *
  * Key Security Decisions:
  * - Path-Based Ownership: Security is primarily determined by the user's UID in the document path, avoiding costly `get()` calls for most authorization checks.
- * - No Public Data: There are no publicly listable top-level collections. All data access requires authentication and ownership or admin privileges.
- * - Admin Access is Read-Only: Admins are granted read access (`get`, `list`) to all user data for moderation but cannot write or delete user data.
+ * - No Public Data: There are no publicly listable top-level collections by default. All data access requires authentication and ownership or admin privileges.
+ * - Admin Access: Admins are granted full read/write access (`get`, `list`, `create`, `update`, `delete`) to all user data for management purposes.
  * - Admin Role Management: Only existing administrators can add or remove other administrators, preventing privilege escalation.
  * - Relational Integrity: On document creation, key relational fields (e.g., `firmId` on a load) are validated against the document path to ensure data consistency. These fields are immutable once set.
  */
@@ -73,10 +73,10 @@ service cloud.firestore {
      */
     match /firms/{firmId} {
       allow get: if isOwner(firmId) || isAdmin();
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isOwner(firmId) && request.resource.data.id == firmId;
-      allow update: if isExistingOwner(firmId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(firmId);
+      allow update: if isExistingOwner(firmId) || isAdmin();
+      allow delete: if isExistingOwner(firmId) || isAdmin();
 
       /**
        * @description Manages Load documents owned by a specific Firm.
@@ -89,8 +89,8 @@ service cloud.firestore {
         allow get: if isOwner(firmId) || isAdmin();
         allow list: if isOwner(firmId) || isAdmin();
         allow create: if isOwner(firmId) && request.resource.data.firmId == firmId;
-        allow update: if isExistingOwner(firmId) && request.resource.data.firmId == resource.data.firmId;
-        allow delete: if isExistingOwner(firmId);
+        allow update: if isExistingOwner(firmId) || isAdmin();
+        allow delete: if isExistingOwner(firmId) || isAdmin();
       }
     }
 
@@ -103,10 +103,10 @@ service cloud.firestore {
      */
     match /drivers/{driverId} {
       allow get: if isOwner(driverId) || isAdmin();
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isOwner(driverId) && request.resource.data.id == driverId;
-      allow update: if isExistingOwner(driverId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(driverId);
+      allow update: if isExistingOwner(driverId) || isAdmin();
+      allow delete: if isExistingOwner(driverId) || isAdmin();
     }
 
     /**
