@@ -14,26 +14,56 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Truck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import {
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+
+type Role = 'firma' | 'sofor' | 'admin';
+
 
 export default function GirisPage() {
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
+
   const [firmaEmail, setFirmaEmail] = useState('');
   const [firmaPassword, setFirmaPassword] = useState('');
   const [soforEmail, setSoforEmail] = useState('');
   const [soforPassword, setSoforPassword] = useState('');
   const [personelEmail, setPersonelEmail] = useState('');
   const [personelPassword, setPersonelPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const checkUserRole = async (userId: string, expectedRole: Role): Promise<boolean> => {
+    if (!firestore) return false;
+    
+    let docPath: string;
+    switch (expectedRole) {
+        case 'firma':
+            docPath = `firms/${userId}`;
+            break;
+        case 'sofor':
+            docPath = `drivers/${userId}`;
+            break;
+        case 'admin':
+            docPath = `roles_admin/${userId}`;
+            break;
+        default:
+            return false;
+    }
+
+    const docRef = doc(firestore, docPath);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists();
+  }
 
 
-  const handleLogin = async (role: 'firma' | 'sofor' | 'admin') => {
+  const handleLogin = async (role: Role) => {
     let email, password;
     switch (role) {
         case 'firma':
@@ -59,19 +89,39 @@ export default function GirisPage() {
         return;
     }
     
+    setIsLoading(true);
     try {
-        await signInWithEmailAndPassword(auth, email, password);
-        toast({
-            title: 'Başarılı',
-            description: 'Giriş yapıldı.',
-        });
-        router.push(`/${role}/dashboard`);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        const isRoleCorrect = await checkUserRole(user.uid, role);
+
+        if (isRoleCorrect) {
+            toast({
+                title: 'Başarılı',
+                description: 'Giriş yapıldı, yönlendiriliyorsunuz...',
+            });
+            router.push(`/${role}/dashboard`);
+        } else {
+             await auth.signOut();
+             let roleName = '';
+             if (role === 'firma') roleName = 'Firma';
+             if (role === 'sofor') roleName = 'Şoför';
+             if (role === 'admin') roleName = 'Personel';
+             toast({
+                variant: 'destructive',
+                title: 'Hatalı Rol',
+                description: `Bu hesap bir ${roleName} hesabı değil. Lütfen doğru sekmeden giriş yapın.`,
+            });
+        }
     } catch (error: any) {
          toast({
             variant: 'destructive',
             title: 'Giriş Başarısız',
             description: 'Email veya şifre hatalı.',
         });
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -109,6 +159,7 @@ export default function GirisPage() {
                   required
                   value={firmaEmail}
                   onChange={(e) => setFirmaEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -116,14 +167,16 @@ export default function GirisPage() {
                 <Input id="firma-password" type="password" required 
                     value={firmaPassword}
                     onChange={(e) => setFirmaPassword(e.target.value)}
+                    disabled={isLoading}
                 />
               </div>
               <Button
                 type="submit"
                 className="w-full"
                 onClick={() => handleLogin('firma')}
+                disabled={isLoading}
               >
-                Giriş Yap
+                {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
               </Button>
               <div className="mt-4 text-center text-sm">
                 Hesabınız yok mu?{' '}
@@ -152,6 +205,7 @@ export default function GirisPage() {
                   required
                   value={soforEmail}
                   onChange={(e) => setSoforEmail(e.target.value)}
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -159,14 +213,16 @@ export default function GirisPage() {
                 <Input id="sofor-password" type="password" required 
                     value={soforPassword}
                     onChange={(e) => setSoforPassword(e.target.value)}
+                    disabled={isLoading}
                 />
               </div>
               <Button
                 type="submit"
                 className="w-full"
                 onClick={() => handleLogin('sofor')}
+                disabled={isLoading}
               >
-                Giriş Yap
+                 {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
               </Button>
               <div className="mt-4 text-center text-sm">
                 Hesabınız yok mu?{' '}
@@ -191,6 +247,7 @@ export default function GirisPage() {
                 <Input id="personel-email" required type="email"
                     value={personelEmail}
                     onChange={(e) => setPersonelEmail(e.target.value)}
+                    disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -198,14 +255,16 @@ export default function GirisPage() {
                 <Input id="personel-password" type="password" required 
                     value={personelPassword}
                     onChange={(e) => setPersonelPassword(e.target.value)}
+                    disabled={isLoading}
                 />
               </div>
               <Button
                 type="submit"
                 className="w-full"
                 onClick={() => handleLogin('admin')}
+                disabled={isLoading}
               >
-                Giriş Yap
+                {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
               </Button>
             </CardContent>
           </Card>

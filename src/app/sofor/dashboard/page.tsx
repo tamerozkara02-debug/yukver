@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { placeholderImages } from '@/lib/placeholder-images';
-import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit } from 'lucide-react';
+import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
@@ -23,6 +23,7 @@ export default function SoforDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const driverDocRef = useMemoFirebase(
     () => (firestore && user ? doc(firestore, 'drivers', user.uid) : null),
@@ -96,6 +97,29 @@ export default function SoforDashboard() {
       });
     }
   }, [locationError, toast]);
+  
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0] && driverDocRef) {
+      const file = event.target.files[0];
+      const previewUrl = URL.createObjectURL(file);
+      // In a real app, you'd upload this file to Firebase Storage and save the URL.
+      // For this example, we'll just save the temporary blob URL.
+      try {
+        await updateDoc(driverDocRef, {
+          profilePicture: previewUrl
+        });
+        toast({ title: 'Başarılı', description: 'Profil resmi güncellendi.' });
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Profil resmi güncellenemedi.' });
+        console.error("Avatar update error:", error);
+      }
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
 
   const handleStatusUpdate = async () => {
     if (!driverDocRef) return;
@@ -138,17 +162,34 @@ export default function SoforDashboard() {
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Avatar>
-              {driverData?.profilePicture ? (
-                <AvatarImage src={driverData.profilePicture} />
-              ) : (
-                driverAvatar && <AvatarImage src={driverAvatar.imageUrl} data-ai-hint={driverAvatar.imageHint} />
-              )}
-              <AvatarFallback>
-                {driverData?.firstName?.[0]}
-                {driverData?.lastName?.[0]}
-              </AvatarFallback>
-            </Avatar>
+             <div className="relative group">
+                <Avatar className="h-12 w-12">
+                  {driverData?.profilePicture ? (
+                    <AvatarImage src={driverData.profilePicture} />
+                  ) : (
+                    driverAvatar && <AvatarImage src={driverAvatar.imageUrl} data-ai-hint={driverAvatar.imageHint} />
+                  )}
+                  <AvatarFallback>
+                    {driverData?.firstName?.[0]}
+                    {driverData?.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                 <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  accept="image/*"
+                />
+                <Button 
+                  size="icon" 
+                  className="absolute inset-0 w-full h-full bg-black/50 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center cursor-pointer transition-opacity"
+                  onClick={handleAvatarClick}
+                >
+                  <Camera className="h-5 w-5 text-white"/>
+                  <span className="sr-only">Profil resmini değiştir</span>
+                </Button>
+            </div>
             <div>
               <h1 className="text-xl font-bold text-foreground font-headline">Şoför Panelim</h1>
               <p className="text-sm text-muted-foreground">
@@ -305,5 +346,3 @@ export default function SoforDashboard() {
     </div>
   );
 }
-
-    

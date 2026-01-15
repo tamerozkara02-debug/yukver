@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { LogOut, Send, PlusCircle, Package, Weight, MapPin, NotebookText, Edit, Trash2 } from "lucide-react";
+import { LogOut, Send, PlusCircle, Package, Weight, MapPin, NotebookText, Edit, Trash2, Camera } from "lucide-react";
 import { useAuth, useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { collection, doc, addDoc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { collection, doc, addDoc, serverTimestamp, deleteDoc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from 'date-fns';
@@ -24,6 +24,7 @@ export default function FirmaDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const companyAvatar = placeholderImages.find(p => p.id === 'avatar-company');
 
@@ -48,6 +49,27 @@ export default function FirmaDashboard() {
   const [requiredVehicleType, setRequiredVehicleType] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0] && firmDocRef) {
+      const file = event.target.files[0];
+      const previewUrl = URL.createObjectURL(file);
+      // This is a temporary client-side preview. For a real app, you'd upload to Firebase Storage.
+      try {
+        await updateDoc(firmDocRef, {
+          profilePicture: previewUrl
+        });
+        toast({ title: 'Başarılı', description: 'Profil resmi güncellendi.' });
+      } catch (error) {
+        toast({ variant: 'destructive', title: 'Hata', description: 'Profil resmi güncellenemedi.' });
+        console.error("Avatar update error:", error);
+      }
+    }
+  };
+
+  const handleAvatarClick = () => {
+      fileInputRef.current?.click();
+  };
 
   const clearForm = () => {
     setLoadType('');
@@ -115,17 +137,34 @@ export default function FirmaDashboard() {
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-             <Avatar>
-              {firmData?.profilePicture ? (
-                <AvatarImage src={firmData.profilePicture} />
-              ) : (
-                companyAvatar && <AvatarImage src={companyAvatar.imageUrl} data-ai-hint={companyAvatar.imageHint} />
-              )}
-              <AvatarFallback>
-                {firmData?.firstName?.[0]}
-                {firmData?.lastName?.[0]}
-              </AvatarFallback>
-            </Avatar>
+             <div className="relative group">
+                <Avatar className="h-12 w-12">
+                  {firmData?.profilePicture ? (
+                    <AvatarImage src={firmData.profilePicture} />
+                  ) : (
+                    companyAvatar && <AvatarImage src={companyAvatar.imageUrl} data-ai-hint={companyAvatar.imageHint} />
+                  )}
+                  <AvatarFallback>
+                    {firmData?.firstName?.[0]}
+                    {firmData?.lastName?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                  className="hidden"
+                  accept="image/*"
+                />
+                <Button 
+                  size="icon" 
+                  className="absolute inset-0 w-full h-full bg-black/50 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center cursor-pointer transition-opacity"
+                  onClick={handleAvatarClick}
+                >
+                  <Camera className="h-5 w-5 text-white"/>
+                  <span className="sr-only">Profil resmini değiştir</span>
+                </Button>
+            </div>
             <div>
               <h1 className="text-xl font-bold text-foreground font-headline">Firma Panelim</h1>
               <p className="text-sm text-muted-foreground">Hoş geldiniz, {firmData?.firstName} {firmData?.lastName}!</p>

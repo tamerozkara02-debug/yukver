@@ -71,7 +71,9 @@ service cloud.firestore {
     match /firms/{firmId} {
       allow get: if isOwner(firmId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isOwner(firmId) && request.resource.data.id == firmId;
+      // Ensure a user can only create their own firm document and not impersonate another.
+      // Also, a driver cannot create a firm document.
+      allow create: if isOwner(firmId) && request.resource.data.id == firmId && !exists(/databases/$(database)/documents/drivers/$(firmId));
       // Firms cannot update their own profile after creation. This must be done by an admin.
       allow update, delete: if isAdmin();
 
@@ -81,6 +83,7 @@ service cloud.firestore {
        */
       match /loads/{loadId} {
         allow get, list: if isOwner(firmId) || isAdmin();
+        // A firm can only create or delete loads for itself.
         allow create, delete: if isOwner(firmId);
         // Loads cannot be updated after creation. They must be deleted and re-created.
         allow update: if false;
@@ -94,7 +97,9 @@ service cloud.firestore {
     match /drivers/{driverId} {
       allow get: if isOwner(driverId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isOwner(driverId) && request.resource.data.id == driverId;
+      // Ensure a user can only create their own driver document.
+      // Also, a firm user cannot create a driver document.
+      allow create: if isOwner(driverId) && request.resource.data.id == driverId && !exists(/databases/$(database)/documents/firms/$(driverId));
       // A driver can only update their own availability, current location, and GPS coordinates.
       // All other profile changes must be done by an admin.
       allow update: if (isOwner(driverId) && request.resource.data.keys().hasOnly(['isAvailable', 'currentCity', 'latitude', 'longitude', 'lastLocationUpdate'])) || isAdmin();
