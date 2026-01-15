@@ -56,30 +56,31 @@ const deleteStaffFlow = ai.defineFlow(
   async ({ userId }) => {
     try {
       // 1. Delete user from Firebase Authentication
+      // This will throw an error if the user doesn't exist, which is fine.
       await getAuth().deleteUser(userId);
 
-      // 2. Delete user's role document from Firestore
+      // 2. Delete user's role document from Firestore if it exists
       const db = getFirestore();
-      const query = db.collection('roles_admin').where('id', '==', userId);
-      const snapshot = await query.get();
-      
-      if (snapshot.empty) {
-        // If no role document was found, the user might have already been partially deleted.
-        // We can consider this a success for idempotency.
-        return { success: true, message: `User with UID ${userId} deleted from Auth. No Firestore role document found to delete.` };
+      // We assume the document ID is the same as the user UID for roles_admin
+      const userRoleDocRef = db.collection('roles_admin').doc(userId);
+      const userRoleDoc = await userRoleDocRef.get();
+
+      if (userRoleDoc.exists) {
+        await userRoleDocRef.delete();
+        return { success: true, message: `Successfully deleted user ${userId} from Auth and Firestore.` };
+      } else {
+        // If no role document was found, it's not a failure.
+        // The user was deleted from Auth, and there was no role to clean up.
+        return { success: true, message: `User with UID ${userId} deleted from Auth. No Firestore role document was found to delete.` };
       }
 
-      const batch = db.batch();
-      snapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-
-      return { success: true, message: `Successfully deleted user ${userId} from Auth and Firestore.` };
-
     } catch (error: any) {
+      // Handle cases where the user might not exist in Auth (e.g., already deleted)
+      if (error.code === 'auth/user-not-found') {
+        return { success: true, message: `User with UID ${userId} was not found in Firebase Auth (already deleted).`};
+      }
       console.error(`Failed to delete user ${userId}:`, error);
-      // It's important to rethrow or handle the error to provide feedback
+      // Re-throw other errors to provide feedback to the client
       throw new Error(`Failed to delete staff user: ${error.message}`);
     }
   }

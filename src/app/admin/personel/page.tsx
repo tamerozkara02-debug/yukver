@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { collection, doc, addDoc } from "firebase/firestore"
+import { collection, doc, setDoc } from "firebase/firestore"
 import { useState } from "react"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
@@ -52,13 +52,12 @@ export default function AdminPersonelPage() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const newUser = userCredential.user;
 
-            const newStaff = {
-                username: email,
-                id: newUser.uid,
-            };
-            
-            if (personelCollection) {
-                await addDoc(personelCollection, newStaff);
+            if (firestore) {
+                const newStaffDocRef = doc(firestore, 'roles_admin', newUser.uid);
+                await setDoc(newStaffDocRef, {
+                    username: email,
+                    id: newUser.uid,
+                });
             }
 
             toast({ title: 'Başarılı', description: 'Yeni personel eklendi.'});
@@ -70,9 +69,13 @@ export default function AdminPersonelPage() {
     };
 
     const handleDeleteStaff = async (id: string) => {
+        if (!id) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Geçersiz kullanıcı ID.' });
+            return;
+        }
         try {
-            await deleteStaffUser({ userId: id });
-            toast({ title: 'Başarılı', description: 'Personel silindi.' });
+            const result = await deleteStaffUser({ userId: id });
+            toast({ title: 'Başarılı', description: result.message });
         } catch (error: any) {
             console.error("Error deleting staff:", error);
             toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel silinemedi.' });
@@ -136,7 +139,7 @@ export default function AdminPersonelPage() {
                 <TableRow key={p.id}>
                     <TableCell>{p.username}</TableCell>
                     <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="icon"><Edit className="h-4 w-4"/></Button>
+                    <Button variant="outline" size="icon" disabled><Edit className="h-4 w-4"/></Button>
                     <Button variant="destructive" size="icon" onClick={() => handleDeleteStaff(p.id)}><Trash2 className="h-4 w-4"/></Button>
                     </TableCell>
                 </TableRow>
@@ -150,7 +153,6 @@ export default function AdminPersonelPage() {
             </Table>
         </CardContent>
         </Card>
-        <Button variant="destructive" onClick={() => handleDeleteStaff('iO918mn7x6YhOpO6JIgxLtGRg772')}>Yunus Çelik'i Sil (Test)</Button>
     </div>
   );
 }
