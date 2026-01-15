@@ -1,5 +1,75 @@
 {
-  "entities": {},
+  "entities": {
+    "Admin": {
+      "title": "Admin User",
+      "description": "Represents a user with administrative privileges.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The user's unique ID, same as their Auth UID."
+        },
+        "username": {
+          "type": "string",
+          "description": "The admin's username, typically their email."
+        }
+      },
+      "required": ["id", "username"]
+    },
+    "Firm": {
+        "title": "Firm",
+        "description": "Represents a company that provides loads.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "firstName": { "type": "string" },
+            "lastName": { "type": "string" },
+            "phoneNumber": { "type": "string" },
+            "city": { "type": "string" },
+            "district": { "type": "string" },
+            "profilePicture": { "type": "string", "format": "uri" }
+        },
+        "required": ["id", "firstName", "lastName", "phoneNumber", "city", "district"]
+    },
+    "Driver": {
+        "title": "Driver",
+        "description": "Represents a driver who can take loads.",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "firstName": { "type": "string" },
+            "lastName": { "type": "string" },
+            "phoneNumber": { "type": "string" },
+            "vehicleType": { "type": "string" },
+            "vehiclePlate": { "type": "string" },
+            "profilePicture": { "type": "string", "format": "uri" },
+            "currentCity": { "type": "string" },
+            "isAvailable": { "type": "boolean" },
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" },
+            "lastLocationUpdate": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "firstName", "lastName", "phoneNumber", "vehicleType", "vehiclePlate"]
+    },
+    "Load": {
+        "title": "Load",
+        "description": "Represents a load to be transported.",
+        "type": "object",
+        "properties": {
+            "firmId": { "type": "string" },
+            "loadType": { "type": "string" },
+            "tonnage": { "type": "number" },
+            "originCity": { "type": "string" },
+            "originDistrict": { "type": "string" },
+            "destinationCity": { "type": "string" },
+            "destinationDistrict": { "type": "string" },
+            "requiredVehicleType": { "type": "string" },
+            "notes": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["firmId", "loadType", "tonnage", "originCity", "originDistrict", "destinationCity", "destinationDistrict", "requiredVehicleType"]
+    }
+  },
   "auth": {
     "providers": [
       "password",
@@ -7,7 +77,27 @@
     ]
   },
   "firestore": {
-    "structure": [],
-    "reasoning": "Database structure has been reset to its initial empty state as requested."
+    "structure": [
+        {
+            "path": "/firms/{firmId}",
+            "schema": { "$ref": "#/entities/Firm" },
+            "description": "Stores company profiles."
+        },
+        {
+            "path": "/firms/{firmId}/loads/{loadId}",
+            "schema": { "$ref": "#/entities/Load" },
+            "description": "Stores loads for each company."
+        },
+        {
+            "path": "/drivers/{driverId}",
+            "schema": { "$ref": "#/entities/Driver" },
+            "description": "Stores driver profiles."
+        },
+        {
+            "path": "/roles_admin/{userId}",
+            "schema": { "$ref": "#/entities/Admin" },
+            "description": "Stores documents for users with admin roles."
+        }
+    ]
   }
 }
