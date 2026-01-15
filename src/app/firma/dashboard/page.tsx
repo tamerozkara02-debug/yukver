@@ -23,11 +23,14 @@ export default function FirmaDashboard() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const firmDocRef = (firestore && user) ? doc(firestore, 'firms', user.uid) : null;
+  const firmDocRef = useMemoFirebase(
+    () => (firestore && user ? doc(firestore, 'firms', user.uid) : null),
+    [firestore, user]
+  );
   const { data: firmData, isLoading: isFirmLoading } = useDoc(firmDocRef);
 
   const loadsCollectionRef = useMemoFirebase(
-    () => (firestore && user) ? collection(firestore, 'firms', user.uid, 'loads') : null,
+    () => (firestore && user ? collection(firestore, 'firms', user.uid, 'loads') : null),
     [firestore, user]
   );
   const { data: loads, isLoading: areLoadsLoading } = useCollection(loadsCollectionRef);
@@ -53,11 +56,11 @@ export default function FirmaDashboard() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !firestore) return;
+    if (!user || !firestore || !loadsCollectionRef) return;
     setIsSubmitting(true);
 
     try {
-      await addDoc(loadsCollectionRef!, {
+      await addDoc(loadsCollectionRef, {
         firmId: user.uid,
         loadType,
         tonnage: Number(tonnage),
@@ -229,4 +232,5 @@ export default function FirmaDashboard() {
     </div>
   );
 }
+
     

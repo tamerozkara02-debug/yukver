@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit } from 'lucide-react';
 import Image from 'next/image';
-import { useAuth, useDoc, useFirestore, useUser } from '@/firebase';
+import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
@@ -24,7 +24,10 @@ export default function SoforDashboard() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const driverDocRef = user ? doc(firestore, 'drivers', user.uid) : null;
+  const driverDocRef = useMemoFirebase(
+    () => (firestore && user ? doc(firestore, 'drivers', user.uid) : null),
+    [firestore, user]
+  );
   const { data: driverData, isLoading: isDriverLoading, error } = useDoc(driverDocRef);
 
   const [currentCity, setCurrentCity] = useState('');
