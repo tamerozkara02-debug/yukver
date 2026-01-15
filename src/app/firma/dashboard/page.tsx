@@ -44,6 +44,7 @@ export default function FirmaDashboard() {
   const [originCity, setOriginCity] = useState('');
   const [originDistrict, setOriginDistrict] = useState('');
   const [destinationCity, setDestinationCity] = useState('');
+  const [destinationDistrict, setDestinationDistrict] = useState('');
   const [requiredVehicleType, setRequiredVehicleType] = useState('');
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,6 +55,7 @@ export default function FirmaDashboard() {
     setOriginCity('');
     setOriginDistrict('');
     setDestinationCity('');
+    setDestinationDistrict('');
     setRequiredVehicleType('');
     setNotes('');
   }
@@ -71,6 +73,7 @@ export default function FirmaDashboard() {
         originCity,
         originDistrict,
         destinationCity,
+        destinationDistrict,
         requiredVehicleType,
         notes,
         createdAt: serverTimestamp(),
@@ -167,10 +170,16 @@ export default function FirmaDashboard() {
                       <Input id="originDistrict" placeholder="Gebze" required value={originDistrict} onChange={(e) => setOriginDistrict(e.target.value)} />
                     </div>
                   </div>
-                   <div className="space-y-2">
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <div className="space-y-2">
                       <Label htmlFor="destinationCity" className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Yükün Gideceği Şehir</Label>
                       <Input id="destinationCity" placeholder="İzmir" required value={destinationCity} onChange={(e) => setDestinationCity(e.target.value)} />
                     </div>
+                     <div className="space-y-2">
+                      <Label htmlFor="destinationDistrict" className="flex items-center gap-2"><MapPin className="w-4 h-4" /> Yükün Gideceği İlçe</Label>
+                      <Input id="destinationDistrict" placeholder="Bornova" required value={destinationDistrict} onChange={(e) => setDestinationDistrict(e.target.value)} />
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <Label htmlFor="requiredVehicleType">İstenen Araç Tipi</Label>
                     <Select required onValueChange={setRequiredVehicleType} value={requiredVehicleType}>
@@ -222,7 +231,7 @@ export default function FirmaDashboard() {
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <h4 className="font-bold">{load.loadType} - {load.tonnage} Ton</h4>
-                                        <p className="text-sm text-muted-foreground">{load.originCity} → {load.destinationCity}</p>
+                                        <p className="text-sm text-muted-foreground">{load.originCity}/{load.originDistrict} → {load.destinationCity}/{load.destinationDistrict}</p>
                                     </div>
                                     <div className="space-x-2">
                                         <Button variant="outline" size="icon" className="h-8 w-8" disabled>

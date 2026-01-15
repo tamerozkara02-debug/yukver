@@ -79,6 +79,10 @@
           "type": "string",
           "description": "City where the load needs to be transported."
         },
+        "destinationDistrict": {
+          "type": "string",
+          "description": "District/area where the load needs to be transported."
+        },
         "requiredVehicleType": {
           "type": "string",
           "description": "Type of vehicle required for the load."
@@ -101,6 +105,7 @@
         "originCity",
         "originDistrict",
         "destinationCity",
+        "destinationDistrict",
         "requiredVehicleType",
         "createdAt"
       ]
