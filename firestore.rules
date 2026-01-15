@@ -1,121 +1,12 @@
-/**
- * Core Philosophy: This ruleset enforces a strict, segregated user-ownership model for a logistics application.
- * There are three primary user types: Firms, Drivers, and Admins. Firms and Drivers are mutually exclusive
- * and cannot access each other's data beyond listing for admin purposes. All user-specific data is stored
- * under a path containing their unique user ID (UID), enabling simple, secure, and performant path-based authorization.
- *
- * Data Structure:
- * - /firms/{firmId}: Stores profile data for a firm. The {firmId} is the user's Auth UID.
- * - /firms/{firmId}/loads/{loadId}: Stores loads created by a specific firm. Access is inherited from the parent firm.
- * - /drivers/{driverId}: Stores profile data for a driver. The {driverId} is the user's Auth UID.
- * - /roles_admin/{uid}: A lookup collection to grant administrator privileges. The existence of a document
- *   with a user's UID grants them read-only access across the database for support and moderation.
- *
- * Key Security Decisions:
- * - Path-Based Ownership: Security is primarily determined by the user's UID in the document path, avoiding costly `get()` calls for most authorization checks.
- * - No Public Data: There are no publicly listable top-level collections by default. All data access requires authentication and ownership or admin privileges.
- * - Admin Access: Admins are granted full read/write access (`get`, `list`, `create`, `update`, `delete`) to all user data for management purposes.
- * - Admin Role Management: Only existing administrators can add or remove other administrators, preventing privilege escalation.
- * - Relational Integrity: On document creation, key relational fields (e.g., `firmId` on a load) are validated against the document path to ensure data consistency. These fields are immutable once set.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // ------------------------------------------------------------------------
-    // Helper Functions
-    // ------------------------------------------------------------------------
-
-    /**
-     * Checks if the user is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * Checks if the currently authenticated user's UID matches the provided userId.
-     * This is the foundation of the ownership model.
-     * @param userId The UID to check against the request's auth UID.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * Checks for ownership on an existing document. Used for update/delete operations
-     * to prevent writes to non-existent paths.
-     * @param userId The UID to check against the request's auth UID.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /**
-     * Checks if the user has administrative privileges by verifying the existence
-     * of a document in the /roles_admin collection.
-     */
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
-    }
-
-
-    // ------------------------------------------------------------------------
-    // Collection Rules
-    // ------------------------------------------------------------------------
-
-    /**
-     * @description Manages Firm profile documents. Only admins can list all firms.
-     * @path /firms/{firmId}
-     */
-    match /firms/{firmId} {
-      allow get: if isOwner(firmId) || isAdmin();
-      allow list: if isAdmin();
-      // Ensure a user can only create their own firm document and not impersonate another.
-      // Also, a driver cannot create a firm document.
-      allow create: if isOwner(firmId) && request.resource.data.id == firmId && !exists(/databases/$(database)/documents/drivers/$(firmId));
-      // Firms can update their own profile picture. Other changes must be done by an admin.
-      allow update: if (isOwner(firmId) && request.resource.data.keys().hasOnly(['profilePicture'])) || isAdmin();
-      allow delete: if isAdmin();
-
-      /**
-       * @description Manages Load documents owned by a specific Firm.
-       * @path /firms/{firmId}/loads/{loadId}
-       */
-      match /loads/{loadId} {
-        allow get, list: if isOwner(firmId) || isAdmin();
-        // A firm can only create or delete loads for itself.
-        allow create, delete: if isOwner(firmId);
-        // Loads cannot be updated after creation. They must be deleted and re-created.
-        allow update: if false;
-      }
-    }
-
-    /**
-     * @description Manages Driver profile documents.
-     * @path /drivers/{driverId}
-     */
-    match /drivers/{driverId} {
-      allow get: if isOwner(driverId) || isAdmin();
-      allow list: if isAdmin();
-      // Ensure a user can only create their own driver document.
-      // Also, a firm user cannot create a driver document.
-      allow create: if isOwner(driverId) && request.resource.data.id == driverId && !exists(/databases/$(database)/documents/firms/$(driverId));
-      // A driver can only update their own availability, current location, GPS coordinates, and profile picture.
-      // All other profile changes must be done by an admin.
-      allow update: if (isOwner(driverId) && request.resource.data.keys().hasAny(['isAvailable', 'currentCity', 'latitude', 'longitude', 'lastLocationUpdate', 'profilePicture'])) || isAdmin();
-      allow delete: if isAdmin();
-    }
-
-    /**
-     * @description Manages administrator roles. The existence of a document here grants admin privileges.
-     * @path /roles_admin/{uid}
-     */
-    match /roles_admin/{uid} {
-      // Admins can see who other admins are.
-      allow get, list: if isAdmin();
-      // Only an existing Admin can create, update, or delete another admin.
-      allow create, update, delete: if isAdmin();
+    
+    // Default rule: Deny all reads and writes by default.
+    // This is the safest starting point. You must explicitly grant access
+    // to collections as you build your application.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
