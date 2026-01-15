@@ -150,6 +150,7 @@ export default function AdminPersonelPage() {
             </Table>
         </CardContent>
         </Card>
+        <Button variant="destructive" onClick={() => handleDeleteStaff('iO918mn7x6YhOpO6JIgxLtGRg772')}>Yunus Çelik'i Sil (Test)</Button>
     </div>
   );
 }
