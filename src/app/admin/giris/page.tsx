@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Truck } from "lucide-react";
+import { GirisPage } from "@/components/auth/giris-page";
 
 export default function AdminGirisPage() {
   return (
@@ -31,19 +32,7 @@ export default function AdminGirisPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action="/admin/dashboard" className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Kullanıcı Adı</Label>
-              <Input id="username" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Şifre</Label>
-              <Input id="password" type="password" required />
-            </div>
-            <Button type="submit" className="w-full !mt-6">
-              Giriş Yap
-            </Button>
-          </form>
+            <GirisPage initialRole="admin" />
         </CardContent>
       </Card>
     </div>
