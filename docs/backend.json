@@ -57,15 +57,23 @@
         },
         "firmId": {
           "type": "string",
-          "description": "Reference to the Firm that posted the load. (Relationship: Firm 1:N Load)"
+          "description": "Reference to the Firm that posted the load."
         },
-        "loadInformation": {
+        "loadType": {
           "type": "string",
-          "description": "Detailed information about the load."
+          "description": "The type or category of the load (e.g., 'Palletized Goods')."
+        },
+        "tonnage": {
+          "type": "number",
+          "description": "The weight of the load in tons."
         },
         "originCity": {
           "type": "string",
-          "description": "City where the load is located."
+          "description": "City where the load pickup is located."
+        },
+        "originDistrict": {
+          "type": "string",
+          "description": "District/area where the load pickup is located."
         },
         "destinationCity": {
           "type": "string",
@@ -74,15 +82,27 @@
         "requiredVehicleType": {
           "type": "string",
           "description": "Type of vehicle required for the load."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or instructions for the load."
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when the load was created."
         }
       },
       "required": [
         "id",
         "firmId",
-        "loadInformation",
+        "loadType",
+        "tonnage",
         "originCity",
+        "originDistrict",
         "destinationCity",
-        "requiredVehicleType"
+        "requiredVehicleType",
+        "createdAt"
       ]
     },
     "Driver": {
@@ -120,6 +140,14 @@
           "description": "URL or path to the driver's vehicle profile picture.",
           "format": "uri"
         },
+        "currentCity": {
+            "type": "string",
+            "description": "The city the driver is currently in."
+        },
+        "isAvailable": {
+            "type": "boolean",
+            "description": "Whether the driver's vehicle is empty (true) or full (false)."
+        },
         "latitude": {
           "type": "number",
           "description": "The driver's last known latitude."
@@ -140,7 +168,9 @@
         "lastName",
         "phoneNumber",
         "vehicleType",
-        "vehiclePlate"
+        "vehiclePlate",
+        "currentCity",
+        "isAvailable"
       ]
     },
     "Admin": {
@@ -244,3 +274,4 @@
     "reasoning": "This design prioritizes security and scalability for the Lojistik Merkezi application. It leverages path-based ownership for user-related data (Firms and Drivers) and a dedicated collection for Admin user management. This approach ensures authorization independence and simplifies security rules. Since firms and drivers should not see each other's data, there is no need to have collaborative data models.\n\nAuthorization Independence: The structure is designed to avoid `get()` calls in security rules. Firm and Driver data are stored under their respective user IDs, enabling simple path-based authorization. This eliminates the need to fetch parent document data to authorize access to child documents.\n\nQAPs Support:\n\n*   Secure List Operations: The segregation of Firm and Driver data into separate user-specific collections allows for secure list operations. Rules can easily restrict access to only the data owned by the authenticated user.\n*   Admin Roles: The `/roles_admin/{uid}` collection enables secure validation of admin privileges using existence checks, ensuring only authorized users can perform administrative tasks.\n\nOther Considerations:\n*   This structure allows easy extension to add new features in the future.\n*   Consider adding timestamp fields (`createdAt`, `updatedAt`) to each document for auditing and data management purposes."
   }
 }
+    

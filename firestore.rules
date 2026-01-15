@@ -1,8 +1,8 @@
 /**
  * Core Philosophy: This ruleset enforces a strict, segregated user-ownership model for a logistics application.
  * There are three primary user types: Firms, Drivers, and Admins. Firms and Drivers are mutually exclusive
- * and cannot access each other's data. All user-specific data is stored under a path containing their unique
- * user ID (UID), enabling simple, secure, and performant path-based authorization.
+ * and cannot access each other's data beyond listing for admin purposes. All user-specific data is stored
+ * under a path containing their unique user ID (UID), enabling simple, secure, and performant path-based authorization.
  *
  * Data Structure:
  * - /firms/{firmId}: Stores profile data for a firm. The {firmId} is the user's Auth UID.
@@ -65,26 +65,24 @@ service cloud.firestore {
     // ------------------------------------------------------------------------
 
     /**
-     * @description Manages Firm profile documents.
+     * @description Manages Firm profile documents. Only admins can list all firms.
      * @path /firms/{firmId}
      */
     match /firms/{firmId} {
       allow get: if isOwner(firmId) || isAdmin();
-      allow list: if isSignedIn();
+      allow list: if isAdmin();
       allow create: if isOwner(firmId) && request.resource.data.id == firmId;
-      allow update: if isExistingOwner(firmId) || isAdmin();
-      allow delete: if isExistingOwner(firmId) || isAdmin();
+      // Firms cannot update their own profile after creation. This must be done by an admin.
+      allow update, delete: if isAdmin();
 
       /**
        * @description Manages Load documents owned by a specific Firm.
        * @path /firms/{firmId}/loads/{loadId}
        */
       match /loads/{loadId} {
-        allow get: if isOwner(firmId) || isAdmin();
-        allow list: if isOwner(firmId) || isAdmin();
-        allow create: if isOwner(firmId) && request.resource.data.firmId == firmId;
-        allow update: if isExistingOwner(firmId) || isAdmin();
-        allow delete: if isExistingOwner(firmId) || isAdmin();
+        allow get, list, create, delete: if isOwner(firmId);
+        // Loads cannot be updated after creation. They must be deleted and re-created.
+        allow update: if false;
       }
     }
 
@@ -94,10 +92,12 @@ service cloud.firestore {
      */
     match /drivers/{driverId} {
       allow get: if isOwner(driverId) || isAdmin();
-      allow list: if isSignedIn();
+      allow list: if isAdmin();
       allow create: if isOwner(driverId) && request.resource.data.id == driverId;
-      allow update: if (isOwner(driverId) && request.resource.data.keys().hasAll(['firstName', 'lastName', 'phoneNumber', 'vehicleType', 'vehiclePlate', 'profilePicture'])) || isAdmin();
-      allow delete: if isExistingOwner(driverId) || isAdmin();
+      // A driver can only update their own availability, current location, and GPS coordinates.
+      // All other profile changes must be done by an admin.
+      allow update: if (isOwner(driverId) && request.resource.data.keys().hasOnly(['isAvailable', 'currentCity', 'latitude', 'longitude', 'lastLocationUpdate'])) || isAdmin();
+      allow delete: if isAdmin();
     }
 
     /**
@@ -105,9 +105,11 @@ service cloud.firestore {
      * @path /roles_admin/{uid}
      */
     match /roles_admin/{uid} {
-      allow get, read: if isOwner(uid) || isAdmin();
-      allow list: if isSignedIn();
+      // Admins can see who other admins are.
+      allow get, list: if isAdmin();
+      // Only an existing Admin can create, update, or delete another admin.
       allow create, update, delete: if isAdmin();
     }
   }
 }
+    
