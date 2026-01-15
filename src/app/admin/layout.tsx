@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button"
 import { useAuth } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { useAdmin } from "@/hooks/use-admin"
-import { useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AdminLayout({
@@ -34,18 +33,6 @@ export default function AdminLayout({
   const { toast } = useToast();
 
   const isActive = (path: string) => pathname === path
-
-  useEffect(() => {
-    // If the admin check is complete and the user is NOT an admin, redirect them.
-    if (!isAdminLoading && !isAdmin) {
-      toast({
-        variant: 'destructive',
-        title: 'Erişim Reddedildi',
-        description: 'Bu sayfaya erişim yetkiniz bulunmuyor.',
-      });
-      router.replace('/giris');
-    }
-  }, [isAdmin, isAdminLoading, router, toast]);
 
   const handleSignOut = async () => {
     if (auth) {
@@ -67,12 +54,20 @@ export default function AdminLayout({
     );
   }
 
-  // If loading is finished and the user is not an admin, they will have been redirected.
-  // We can also return null or a message here to prevent rendering the admin layout for non-admins.
+  // If loading is finished and the user is NOT an admin, block access.
   if (!isAdmin) {
-    return null; 
+     return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 text-center p-4">
+           <h1 className="text-2xl font-bold text-destructive">Erişim Reddedildi</h1>
+          <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz bulunmuyor.</p>
+          <Button onClick={() => router.replace('/giris')}>Giriş Sayfasına Dön</Button>
+        </div>
+      </div>
+    );
   }
 
+  // If loading is finished and the user IS an admin, render the layout.
   return (
     <SidebarProvider>
       <Sidebar>
