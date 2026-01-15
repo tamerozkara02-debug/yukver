@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-logistics",
+      "description": "A highway with trucks at sunset, representing logistics and transport.",
+      "imageUrl": "https://images.unsplash.com/photo-1738507869660-b44ea20ab037?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxoaWdod2F5JTIwdHJ1Y2t8ZW58MHx8fHwxNzY4NDUzODExfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "highway truck"
+    },
+    {
+      "id": "avatar-company",
+      "description": "Placeholder avatar for a company profile.",
+      "imageUrl": "https://images.unsplash.com/photo-1531972111231-7482a960e109?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxvZmZpY2UlMjBidWlsZGluZ3xlbnwwfHx8fDE3Njg0NTcwOTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "office building"
+    },
+    {
+      "id": "avatar-driver",
+      "description": "Placeholder avatar for a driver profile.",
+      "imageUrl": "https://images.unsplash.com/photo-1614943267910-f2d08ac3c14f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8ZHJpdmVyJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzY4NDY0MjA2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "driver portrait"
+    },
+    {
+      "id": "vehicle-profile",
+      "description": "Placeholder for a vehicle profile picture.",
+      "imageUrl": "https://images.unsplash.com/photo-1643649842310-b89bcdb3832c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx0cnVjayUyMHNpZGV8ZW58MHx8fHwxNzY4NDY0MjA3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "truck side"
+    }
+  ]
 }
