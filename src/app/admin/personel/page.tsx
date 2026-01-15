@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useAuth, useCollection, useFirestore, useMemoFirebase } from "@/firebase"
+import { useAuth, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
 import { addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates"
 import { collection, doc } from "firebase/firestore"
 import { useState } from "react"
@@ -32,9 +32,12 @@ import { useToast } from "@/hooks/use-toast"
 export default function AdminPersonelPage() {
     const firestore = useFirestore();
     const auth = useAuth();
+    const { user } = useUser();
     const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
+    
+    // Wait until user is authenticated to create the query
+    const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
     const { data: personel, isLoading } = useCollection(personelCollection);
     
     const handleAddStaff = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -51,16 +54,17 @@ export default function AdminPersonelPage() {
         try {
             // Create user in Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
+            const newUser = userCredential.user;
 
             // Add to roles_admin collection
             const newStaff = {
                 username: email,
-                id: user.uid, // Use Firebase UID as the document ID
+                id: newUser.uid, // Use Firebase UID as the document ID
             };
             
-            if (firestore) {
-                const staffDoc = doc(firestore, 'roles_admin', user.uid);
+            if (firestore && personelCollection) {
+                // Use setDoc with specific ID to match auth UID
+                const staffDoc = doc(firestore, 'roles_admin', newUser.uid);
                 // This is now a blocking call to ensure role is set before confirming
                 await addDocumentNonBlocking(personelCollection, newStaff);
             }
@@ -135,8 +139,8 @@ export default function AdminPersonelPage() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {isLoading && <TableRow><TableCell colSpan={5}>Yükleniyor...</TableCell></TableRow>}
-                {personel && personel.map((p: any) => (
+                {isLoading && <TableRow><TableCell colSpan={2}>Yükleniyor...</TableCell></TableRow>}
+                {!isLoading && personel && personel.map((p: any) => (
                 <TableRow key={p.id}>
                     <TableCell>{p.username}</TableCell>
                     <TableCell className="text-right space-x-2">
@@ -145,6 +149,11 @@ export default function AdminPersonelPage() {
                     </TableCell>
                 </TableRow>
                 ))}
+                {!isLoading && (!personel || personel.length === 0) && (
+                    <TableRow>
+                        <TableCell colSpan={2} className="text-center">Henüz personel eklenmemiş.</TableCell>
+                    </TableRow>
+                )}
             </TableBody>
             </Table>
         </CardContent>
