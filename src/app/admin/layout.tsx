@@ -36,7 +36,7 @@ export default function AdminLayout({
   const isActive = (path: string) => pathname === path
 
   useEffect(() => {
-    // If the check is complete and the user is not an admin, redirect them.
+    // If the admin check is complete and the user is NOT an admin, redirect them.
     if (!isAdminLoading && !isAdmin) {
       toast({
         variant: 'destructive',
@@ -48,12 +48,15 @@ export default function AdminLayout({
   }, [isAdmin, isAdminLoading, router, toast]);
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    if (auth) {
+        await signOut(auth);
+    }
     router.push('/giris');
   }
 
-  // While checking, show a loading state.
-  if (isAdminLoading || !isAdmin) {
+  // While the admin check is loading, show a loading screen.
+  // This prevents a flash of the admin content or a premature redirect.
+  if (isAdminLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -62,6 +65,12 @@ export default function AdminLayout({
         </div>
       </div>
     );
+  }
+
+  // If loading is finished and the user is not an admin, they will have been redirected.
+  // We can also return null or a message here to prevent rendering the admin layout for non-admins.
+  if (!isAdmin) {
+    return null; 
   }
 
   return (
