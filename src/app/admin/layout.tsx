@@ -13,9 +13,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Truck, LayoutDashboard, Users, UserCog, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/firebase"
+import { signOut } from "firebase/auth"
 
 export default function AdminLayout({
   children,
@@ -23,7 +25,14 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const router = useRouter();
+  const auth = useAuth();
   const isActive = (path: string) => pathname === path
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push('/giris');
+  }
 
   return (
     <SidebarProvider>
@@ -65,11 +74,9 @@ export default function AdminLayout({
         <SidebarFooter>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                        <Link href="/">
-                            <LogOut />
-                            <span>Çıkış Yap</span>
-                        </Link>
+                    <SidebarMenuButton onClick={handleSignOut}>
+                        <LogOut />
+                        <span>Çıkış Yap</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>

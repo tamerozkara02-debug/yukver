@@ -8,15 +8,56 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Building, LogOut, Phone, Send, CheckCircle } from "lucide-react";
+import { useAuth, useDoc, useFirestore, useUser, addDocumentNonBlocking } from "@/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { collection, doc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 export default function FirmaDashboard() {
+  const router = useRouter();
+  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const firmDocRef = (firestore && user) ? doc(firestore, 'firms', user.uid) : null;
+  const { data: firmData, isLoading: isFirmLoading } = useDoc(firmDocRef);
+
   const [submitted, setSubmitted] = useState(false);
+  const [loadInfo, setLoadInfo] = useState('');
+  const [originCity, setOriginCity] = useState('');
+  const [destinationCity, setDestinationCity] = useState('');
+  const [vehicleType, setVehicleType] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Logic to submit load info would go here
-    setSubmitted(true);
+    if (!user || !firestore) return;
+
+    const loadsCollection = collection(firestore, 'firms', user.uid, 'loads');
+    addDocumentNonBlocking(loadsCollection, {
+        firmId: user.uid,
+        loadInformation: loadInfo,
+        originCity,
+        destinationCity,
+        requiredVehicleType: vehicleType,
+    }).then(() => {
+        setSubmitted(true);
+        toast({ title: 'Yük Kaydedildi!', description: 'Yük bilgileriniz başarıyla sisteme kaydedildi.' });
+    }).catch((error) => {
+        console.error("Error adding load:", error);
+        toast({ variant: 'destructive', title: 'Hata', description: 'Yük kaydedilemedi.' });
+    });
   };
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    router.push('/giris');
+  }
+
+  if (isUserLoading || isFirmLoading) {
+    return <div>Yükleniyor...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,10 +67,10 @@ export default function FirmaDashboard() {
             <Building className="h-8 w-8 text-primary" />
             <div>
               <h1 className="text-xl font-bold text-foreground font-headline">Firma Panelim</h1>
-              <p className="text-sm text-muted-foreground">Hoş geldiniz, Ahmet Yılmaz!</p>
+              <p className="text-sm text-muted-foreground">Hoş geldiniz, {firmData?.firstName} {firmData?.lastName}!</p>
             </div>
           </div>
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={handleSignOut}>
             <LogOut className="h-4 w-4" />
             <span className="sr-only">Çıkış Yap</span>
           </Button>
@@ -76,21 +117,23 @@ export default function FirmaDashboard() {
                       placeholder="Örn: 10 ton paletli gıda malzemesi"
                       required
                       rows={4}
+                      value={loadInfo}
+                      onChange={(e) => setLoadInfo(e.target.value)}
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="nereden">Yükün Bulunduğu Şehir</Label>
-                      <Input id="nereden" placeholder="Kocaeli" required />
+                      <Input id="nereden" placeholder="Kocaeli" required value={originCity} onChange={(e) => setOriginCity(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="nereye">Yükün Gideceği Şehir</Label>
-                      <Input id="nereye" placeholder="İzmir" required />
+                      <Input id="nereye" placeholder="İzmir" required value={destinationCity} onChange={(e) => setDestinationCity(e.target.value)} />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="arac-bilgisi">İstenen Araç Tipi</Label>
-                    <Select required>
+                    <Select required onValueChange={setVehicleType}>
                       <SelectTrigger id="arac-bilgisi">
                         <SelectValue placeholder="Araç tipi seçiniz" />
                       </SelectTrigger>
