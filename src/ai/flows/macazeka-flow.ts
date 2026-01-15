@@ -21,16 +21,6 @@ export async function askMacazeka(input: MacazekaInput): Promise<MacazekaOutput>
     return await macazekaFlow(input);
 }
 
-const prompt = ai.definePrompt({
-    name: 'macazekaPrompt',
-    input: { schema: MacazekaInputSchema },
-    output: { schema: MacazekaOutputSchema },
-    prompt: `Senin adın MaçaZeka ve sen bir lojistik uzmanısın. Yalnızca lojistik, nakliye, taşımacılık ve ilgili konulardaki soruları yanıtla. Başka herhangi bir konuda soru sorulursa, kibarca sadece lojistik konularında yardımcı olabileceğini belirt.
-
-Kullanıcının sorusu: {{{prompt}}}`
-});
-
-
 const macazekaFlow = ai.defineFlow(
   {
     name: 'macazekaFlow',
