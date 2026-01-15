@@ -14,10 +14,13 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Truck, LayoutDashboard, Users, UserCog, LogOut, Map } from "lucide-react"
+import { Truck, LayoutDashboard, Users, UserCog, LogOut, Map, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/firebase"
 import { signOut } from "firebase/auth"
+import { useAdmin } from "@/hooks/use-admin"
+import { useEffect } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AdminLayout({
   children,
@@ -27,11 +30,38 @@ export default function AdminLayout({
   const pathname = usePathname()
   const router = useRouter();
   const auth = useAuth();
+  const { isAdmin, isLoading: isAdminLoading } = useAdmin();
+  const { toast } = useToast();
+
   const isActive = (path: string) => pathname === path
+
+  useEffect(() => {
+    // If the check is complete and the user is not an admin, redirect them.
+    if (!isAdminLoading && !isAdmin) {
+      toast({
+        variant: 'destructive',
+        title: 'Erişim Reddedildi',
+        description: 'Bu sayfaya erişim yetkiniz bulunmuyor.',
+      });
+      router.replace('/giris');
+    }
+  }, [isAdmin, isAdminLoading, router, toast]);
 
   const handleSignOut = async () => {
     await signOut(auth);
     router.push('/giris');
+  }
+
+  // While checking, show a loading state.
+  if (isAdminLoading || !isAdmin) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Yetkiniz kontrol ediliyor...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
