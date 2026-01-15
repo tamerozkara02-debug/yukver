@@ -80,7 +80,8 @@ service cloud.firestore {
        * @path /firms/{firmId}/loads/{loadId}
        */
       match /loads/{loadId} {
-        allow get, list, create, delete: if isOwner(firmId);
+        allow get, list: if isOwner(firmId) || isAdmin();
+        allow create, delete: if isOwner(firmId);
         // Loads cannot be updated after creation. They must be deleted and re-created.
         allow update: if false;
       }
@@ -112,4 +113,3 @@ service cloud.firestore {
     }
   }
 }
-    
