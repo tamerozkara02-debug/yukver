@@ -118,7 +118,8 @@ service cloud.firestore {
      * @principle Secures administrative roles by ensuring only other admins can manage the list of administrators.
      */
     match /roles_admin/{uid} {
-      allow get: if isAdmin();
+      // An admin can see all roles, a user can see their own role document. This is required for the `isAdmin` function to work.
+      allow get: if isOwner(uid) || isAdmin();
       allow list: if isAdmin();
       allow create: if isAdmin();
       allow update: if isAdmin() && resource != null;
