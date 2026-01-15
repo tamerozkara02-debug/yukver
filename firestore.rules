@@ -1,0 +1,127 @@
+/**
+ * Core Philosophy: This ruleset enforces a strict, segregated user-ownership model for a logistics application.
+ * There are three primary user types: Firms, Drivers, and Admins. Firms and Drivers are mutually exclusive
+ * and cannot access each other's data. All user-specific data is stored under a path containing their unique
+ * user ID (UID), enabling simple, secure, and performant path-based authorization.
+ *
+ * Data Structure:
+ * - /firms/{firmId}: Stores profile data for a firm. The {firmId} is the user's Auth UID.
+ * - /firms/{firmId}/loads/{loadId}: Stores loads created by a specific firm. Access is inherited from the parent firm.
+ * - /drivers/{driverId}: Stores profile data for a driver. The {driverId} is the user's Auth UID.
+ * - /roles_admin/{uid}: A lookup collection to grant administrator privileges. The existence of a document
+ *   with a user's UID grants them read-only access across the database for support and moderation.
+ *
+ * Key Security Decisions:
+ * - Path-Based Ownership: Security is primarily determined by the user's UID in the document path, avoiding costly `get()` calls for most authorization checks.
+ * - No Public Data: There are no publicly listable top-level collections. All data access requires authentication and ownership or admin privileges.
+ * - Admin Access is Read-Only: Admins are granted read access (`get`, `list`) to all user data for moderation but cannot write or delete user data.
+ * - Admin Role Management: Only existing administrators can add or remove other administrators, preventing privilege escalation.
+ * - Relational Integrity: On document creation, key relational fields (e.g., `firmId` on a load) are validated against the document path to ensure data consistency. These fields are immutable once set.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------------------
+    // Helper Functions
+    // ------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the foundation of the ownership model.
+     * @param userId The UID to check against the request's auth UID.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Checks for ownership on an existing document. Used for update/delete operations
+     * to prevent writes to non-existent paths.
+     * @param userId The UID to check against the request's auth UID.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * Checks if the user has administrative privileges by verifying the existence
+     * of a document in the /roles_admin collection.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
+
+    /**
+     * @description Manages Firm profile documents.
+     * @path /firms/{firmId}
+     * @allow (create) A new user with UID 'firm_abc' can create their own profile at `/firms/firm_abc`.
+     * @deny (get) A user with UID 'driver_xyz' cannot read the profile at `/firms/firm_abc`.
+     * @principle Enforces self-creation and strict ownership for a user's root profile document.
+     */
+    match /firms/{firmId} {
+      allow get: if isOwner(firmId) || isAdmin();
+      allow list: if false;
+      allow create: if isOwner(firmId) && request.resource.data.id == firmId;
+      allow update: if isExistingOwner(firmId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(firmId);
+
+      /**
+       * @description Manages Load documents owned by a specific Firm.
+       * @path /firms/{firmId}/loads/{loadId}
+       * @allow (create) The firm 'firm_abc' can create a new load document in its own subcollection.
+       * @deny (list) The firm 'firm_xyz' cannot list the loads belonging to 'firm_abc'.
+       * @principle Restricts access to a user's own data tree and validates relational integrity.
+       */
+      match /loads/{loadId} {
+        allow get: if isOwner(firmId) || isAdmin();
+        allow list: if isOwner(firmId) || isAdmin();
+        allow create: if isOwner(firmId) && request.resource.data.firmId == firmId;
+        allow update: if isExistingOwner(firmId) && request.resource.data.firmId == resource.data.firmId;
+        allow delete: if isExistingOwner(firmId);
+      }
+    }
+
+    /**
+     * @description Manages Driver profile documents.
+     * @path /drivers/{driverId}
+     * @allow (create) A new user with UID 'driver_abc' can create their own profile at `/drivers/driver_abc`.
+     * @deny (update) A firm with UID 'firm_xyz' cannot update the profile at `/drivers/driver_abc`.
+     * @principle Enforces self-creation and strict ownership for a user's root profile document.
+     */
+    match /drivers/{driverId} {
+      allow get: if isOwner(driverId) || isAdmin();
+      allow list: if false;
+      allow create: if isOwner(driverId) && request.resource.data.id == driverId;
+      allow update: if isExistingOwner(driverId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(driverId);
+    }
+
+    /**
+     * @description Manages administrator roles. The existence of a document here grants admin privileges.
+     * @path /roles_admin/{uid}
+     * @allow (create) An existing admin can create a document at `/roles_admin/new_admin_uid`.
+     * @deny (delete) A non-admin user cannot delete a document from this collection to revoke admin rights.
+     * @principle Secures administrative roles by ensuring only other admins can manage the list of administrators.
+     */
+    match /roles_admin/{uid} {
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
+    }
+  }
+}
