@@ -103,7 +103,7 @@ service cloud.firestore {
       allow create: if isOwner(driverId) && request.resource.data.id == driverId && !exists(/databases/$(database)/documents/firms/$(driverId));
       // A driver can only update their own availability, current location, GPS coordinates, and profile picture.
       // All other profile changes must be done by an admin.
-      allow update: if (isOwner(driverId) && request.resource.data.keys().hasOnly(['isAvailable', 'currentCity', 'latitude', 'longitude', 'lastLocationUpdate', 'profilePicture'])) || isAdmin();
+      allow update: if (isOwner(driverId) && request.resource.data.keys().hasAny(['isAvailable', 'currentCity', 'latitude', 'longitude', 'lastLocationUpdate', 'profilePicture'])) || isAdmin();
       allow delete: if isAdmin();
     }
 
