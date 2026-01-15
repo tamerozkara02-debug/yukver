@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Building, LogOut, Send, PlusCircle, Package, Weight, MapPin, NotebookText, Edit, Trash2 } from "lucide-react";
+import { LogOut, Send, PlusCircle, Package, Weight, MapPin, NotebookText, Edit, Trash2 } from "lucide-react";
 import { useAuth, useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,8 @@ import { collection, doc, addDoc, serverTimestamp, deleteDoc } from "firebase/fi
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { placeholderImages } from "@/lib/placeholder-images";
 
 export default function FirmaDashboard() {
   const router = useRouter();
@@ -22,6 +24,8 @@ export default function FirmaDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  const companyAvatar = placeholderImages.find(p => p.id === 'avatar-company');
 
   const firmDocRef = useMemoFirebase(
     () => (firestore && user ? doc(firestore, 'firms', user.uid) : null),
@@ -108,7 +112,17 @@ export default function FirmaDashboard() {
       <header className="bg-card border-b sticky top-0 z-10">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Building className="h-8 w-8 text-primary" />
+             <Avatar>
+              {firmData?.profilePicture ? (
+                <AvatarImage src={firmData.profilePicture} />
+              ) : (
+                companyAvatar && <AvatarImage src={companyAvatar.imageUrl} data-ai-hint={companyAvatar.imageHint} />
+              )}
+              <AvatarFallback>
+                {firmData?.firstName?.[0]}
+                {firmData?.lastName?.[0]}
+              </AvatarFallback>
+            </Avatar>
             <div>
               <h1 className="text-xl font-bold text-foreground font-headline">Firma Panelim</h1>
               <p className="text-sm text-muted-foreground">Hoş geldiniz, {firmData?.firstName} {firmData?.lastName}!</p>
