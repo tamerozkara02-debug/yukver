@@ -119,6 +119,19 @@
           "type": "string",
           "description": "URL or path to the driver's vehicle profile picture.",
           "format": "uri"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "The driver's last known latitude."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "The driver's last known longitude."
+        },
+        "lastLocationUpdate": {
+          "type": "string",
+          "description": "The timestamp of the last location update.",
+          "format": "date-time"
         }
       },
       "required": [

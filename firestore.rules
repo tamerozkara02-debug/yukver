@@ -105,7 +105,8 @@ service cloud.firestore {
       allow get: if isOwner(driverId) || isAdmin();
       allow list: if isAdmin();
       allow create: if isOwner(driverId) && request.resource.data.id == driverId;
-      allow update: if isExistingOwner(driverId) || isAdmin();
+      // Allow driver to update their own location, or admin to update anything.
+      allow update: if (isExistingOwner(driverId) && request.resource.data.keys().hasOnly(['latitude', 'longitude', 'lastLocationUpdate'])) || isAdmin();
       allow delete: if isExistingOwner(driverId) || isAdmin();
     }
 
