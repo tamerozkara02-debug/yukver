@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,43 +19,51 @@ export function useAdmin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Memoize the document reference to prevent re-renders
-  const adminDocRef = useMemoFirebase(
-    () => (user && firestore ? doc(firestore, 'roles_admin', user.uid) : null),
-    [user, firestore]
-  );
-
   useEffect(() => {
-    // If auth is still loading, we can't do anything yet.
+    // Start loading whenever auth state is loading.
     if (isAuthLoading) {
       setIsLoading(true);
       return;
     }
 
-    // If there's no user, they are definitely not an admin.
-    if (!user || !adminDocRef) {
+    // If there's no authenticated user, they can't be an admin.
+    if (!user) {
       setIsAdmin(false);
       setIsLoading(false);
       return;
     }
 
-    // User is authenticated, now check for the admin role document.
+    // User is authenticated, now check for the admin role document in Firestore.
+    // The reference is stable due to useMemoFirebase in the previous implementation,
+    // so we can create it directly here based on the stable `user` object.
+    const adminDocRef = doc(firestore, 'roles_admin', user.uid);
+    let isMounted = true;
+
     const checkAdminStatus = async () => {
-      setIsLoading(true);
       try {
         const docSnap = await getDoc(adminDocRef);
-        setIsAdmin(docSnap.exists());
+        if (isMounted) {
+          setIsAdmin(docSnap.exists());
+        }
       } catch (error) {
         console.error("Error checking admin status:", error);
-        setIsAdmin(false);
+        if (isMounted) {
+          setIsAdmin(false);
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     checkAdminStatus();
 
-  }, [user, isAuthLoading, adminDocRef]);
+    return () => {
+      isMounted = false;
+    };
+
+  }, [user, isAuthLoading, firestore]);
 
   return { isAdmin, isLoading };
 }
