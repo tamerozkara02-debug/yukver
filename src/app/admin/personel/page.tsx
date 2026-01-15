@@ -21,15 +21,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { collection, doc, setDoc } from "firebase/firestore"
+import { collection } from "firebase/firestore"
 import { useState } from "react"
-import { createUserWithEmailAndPassword } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
-import { deleteStaffUser } from "@/ai/flows/delete-staff-flow"
+import { createStaffUser, deleteStaffUser } from "@/ai/flows/staff-management-flow"
 
 export default function AdminPersonelPage() {
     const firestore = useFirestore();
-    const auth = useAuth();
     const { user } = useUser();
     const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -49,29 +47,13 @@ export default function AdminPersonelPage() {
         }
 
         try {
-            // We need a secondary app to create a user without signing them in
-            // For simplicity, we just use the main auth instance.
-            // This will sign the admin out and sign the new user in, which is not ideal,
-            // but for this prototype it's acceptable.
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const newUser = userCredential.user;
-
-            if (firestore) {
-                const newStaffDocRef = doc(firestore, 'roles_admin', newUser.uid);
-                await setDoc(newStaffDocRef, {
-                    username: email,
-                    id: newUser.uid,
-                });
-            }
-
-            toast({ title: 'Başarılı', description: 'Yeni personel eklendi. Tekrar giriş yapmanız gerekebilir.'});
+            const newUser = await createStaffUser({ email, password });
+            toast({ title: 'Başarılı', description: `Yeni personel (${newUser.email}) eklendi.`});
             setIsDialogOpen(false);
-            
-            // To improve: sign the admin back in.
             
         } catch (error: any) {
             console.error("Error adding staff:", error);
-            if (error.code === 'auth/email-already-in-use') {
+            if (error.code === 'auth/email-already-exists') {
                 toast({ variant: 'destructive', title: 'Hata', description: 'Bu e-posta adresi zaten kullanımda.' });
             } else {
                 toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel eklenemedi.' });
@@ -124,11 +106,11 @@ export default function AdminPersonelPage() {
                 <div className="grid gap-4 py-4">
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="p-username" className="text-right">Kullanıcı Adı (Email)</Label>
-                        <Input id="p-username" name="p-username" type="email" className="col-span-3"/>
+                        <Input id="p-username" name="p-username" type="email" defaultValue="tamerozkara02@gmail.com" className="col-span-3"/>
                     </div>
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="p-password" className="text-right">Şifre</Label>
-                        <Input id="p-password" name="p-password" type="password" className="col-span-3" minLength={6}/>
+                        <Input id="p-password" name="p-password" type="password" defaultValue="tamernecla2362" className="col-span-3" minLength={6}/>
                     </div>
                 </div>
                 <DialogFooter>

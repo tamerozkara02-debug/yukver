@@ -1,3 +1,3 @@
 // Flows will be imported for their side effects in this file.
 import "@/ai/flows/macazeka-flow";
-import "@/ai/flows/delete-staff-flow";
+import "@/ai/flows/staff-management-flow";
