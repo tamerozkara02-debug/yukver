@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,9 @@ import { useRouter } from "next/navigation";
 export default function FirmaKayitPage() {
     const router = useRouter();
     const companyAvatar = placeholderImages.find(p => p.id === 'avatar-company');
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(companyAvatar?.imageUrl || null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,6 +23,17 @@ export default function FirmaKayitPage() {
         console.log("Firma kayıt formu gönderildi");
         router.push('/firma/dashboard');
     }
+
+    const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files[0]) {
+          const file = event.target.files[0];
+          setAvatarPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
+    };
 
   return (
     <Card className="w-full">
@@ -31,10 +46,17 @@ export default function FirmaKayitPage() {
             <div className="flex justify-center mb-4">
                  <div className="relative">
                     <Avatar className="h-24 w-24">
-                        {companyAvatar && <AvatarImage src={companyAvatar.imageUrl} alt="Firma Profili" data-ai-hint={companyAvatar.imageHint} />}
+                        {avatarPreview && <AvatarImage src={avatarPreview} alt="Firma Profili" />}
                         <AvatarFallback>FM</AvatarFallback>
                     </Avatar>
-                    <Button type="button" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-primary hover:bg-primary/90">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    <Button type="button" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-primary hover:bg-primary/90" onClick={handleAvatarClick}>
                         <Camera className="h-4 w-4"/>
                         <span className="sr-only">Profil resmini değiştir</span>
                     </Button>

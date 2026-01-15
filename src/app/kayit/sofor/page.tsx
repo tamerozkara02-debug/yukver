@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,9 @@ import { useRouter } from "next/navigation";
 export default function SoforKayitPage() {
   const router = useRouter();
   const driverAvatar = placeholderImages.find(p => p.id === 'avatar-driver');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(driverAvatar?.imageUrl || null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -20,6 +24,17 @@ export default function SoforKayitPage() {
       console.log("Şoför kayıt formu gönderildi");
       router.push('/sofor/dashboard');
   }
+
+    const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files[0]) {
+          const file = event.target.files[0];
+          setAvatarPreview(URL.createObjectURL(file));
+        }
+    };
+
+    const handleAvatarClick = () => {
+        fileInputRef.current?.click();
+    };
 
   return (
     <Card className="w-full">
@@ -32,10 +47,17 @@ export default function SoforKayitPage() {
           <div className="flex justify-center mb-4">
             <div className="relative">
               <Avatar className="h-24 w-24">
-                {driverAvatar && <AvatarImage src={driverAvatar.imageUrl} alt="Şoför Profili" data-ai-hint={driverAvatar.imageHint} />}
+                {avatarPreview && <AvatarImage src={avatarPreview} alt="Şoför Profili" />}
                 <AvatarFallback>ŞR</AvatarFallback>
               </Avatar>
-              <Button type="button" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-primary hover:bg-primary/90">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                    accept="image/*"
+                />
+              <Button type="button" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-primary hover:bg-primary/90" onClick={handleAvatarClick}>
                 <Camera className="h-4 w-4"/>
                 <span className="sr-only">Profil resmini değiştir</span>
               </Button>
