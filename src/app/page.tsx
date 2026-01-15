@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Truck, Building, ArrowRight, User, LogIn, Briefcase } from 'lucide-react';
 import Image from 'next/image';
 import { placeholderImages } from '@/lib/placeholder-images';
+import { MacazekaChat } from '@/components/macazeka-chat';
 
 export default function Home() {
   const heroImage = placeholderImages.find(p => p.id === "hero-logistics");
@@ -162,6 +163,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      <MacazekaChat />
     </div>
   );
 }
