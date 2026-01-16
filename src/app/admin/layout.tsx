@@ -54,8 +54,8 @@ export default function AdminLayout({
     );
   }
 
-  // If loading is finished and the user IS an admin, block access. (LOGIC INVERTED)
-  if (isAdmin) {
+  // If loading is finished and the user is NOT an admin, block access.
+  if (!isAdmin) {
      return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 text-center p-4">
@@ -67,7 +67,7 @@ export default function AdminLayout({
     );
   }
 
-  // If loading is finished and the user is NOT an admin, render the layout. (LOGIC INVERTED)
+  // If loading is finished and the user IS an admin, render the layout.
   return (
     <SidebarProvider>
       <Sidebar>
