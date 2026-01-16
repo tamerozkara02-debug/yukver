@@ -12,7 +12,7 @@ export default function KayitLayout({
         <div className="flex justify-center mb-6">
           <Link href="/" className="flex items-center gap-2">
             <Truck className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground font-headline">Lojistik Merkezi</h1>
+            <h1 className="text-2xl font-bold text-foreground font-headline">MAÇA LOJİSTİK MERKEZİ</h1>
           </Link>
         </div>
         {children}

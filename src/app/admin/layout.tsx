@@ -74,7 +74,7 @@ export default function AdminLayout({
         <SidebarHeader>
             <div className="flex items-center gap-2 p-2">
                 <Truck className="h-8 w-8 text-primary" />
-                <h1 className="text-xl font-bold text-foreground font-headline">Lojistik Merkezi</h1>
+                <h1 className="text-xl font-bold text-foreground font-headline">MAÇA LOJİSTİK MERKEZİ</h1>
             </div>
         </SidebarHeader>
         <SidebarContent>
