@@ -71,33 +71,6 @@ export default function AdminLayout({
     );
   }
   
-  const pagePermissions: Record<string, PermissionKey | undefined> = {
-    '/admin/dashboard': 'canViewDashboard',
-    '/admin/konum-takibi': 'canTrackLocations',
-    '/admin/uyeler': 'canManageMembers',
-    '/admin/personel': 'canManageStaff',
-  };
-
-  const requiredPermission = pagePermissions[pathname];
-
-  if (requiredPermission && adminData && !adminData.permissions?.[requiredPermission]) {
-    const firstAllowedPage = [
-        { perm: 'canViewDashboard', path: '/admin/dashboard'},
-        { perm: 'canTrackLocations', path: '/admin/konum-takibi'},
-        { perm: 'canManageMembers', path: '/admin/uyeler'},
-        { perm: 'canManageStaff', path: '/admin/personel'},
-    ].find(p => adminData.permissions?.[p.perm as PermissionKey])?.path || '/giris';
-
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4 text-center p-4">
-          <h1 className="text-2xl font-bold text-destructive">Erişim Reddedildi</h1>
-          <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz bulunmuyor.</p>
-          <Button onClick={() => router.replace(firstAllowedPage)}>Panele Geri Dön</Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <SidebarProvider>
@@ -110,46 +83,38 @@ export default function AdminLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {adminData?.permissions?.canViewDashboard && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
-                  <Link href="/admin/dashboard">
-                    <LayoutDashboard />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-             {adminData?.permissions?.canTrackLocations && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
-                    <Link href="/admin/konum-takibi">
-                      <Map />
-                      <span>Konum Takibi</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-             )}
-            {adminData?.permissions?.canManageMembers && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
-                  <Link href="/admin/uyeler">
-                    <Users />
-                    <span>Üyeler</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-            {adminData?.permissions?.canManageStaff && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
-                  <Link href="/admin/personel">
-                    <UserCog />
-                    <span>Personel</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
+                <Link href="/admin/dashboard">
+                  <LayoutDashboard />
+                  <span>Dashboard</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
+                <Link href="/admin/konum-takibi">
+                  <Map />
+                  <span>Konum Takibi</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
+                <Link href="/admin/uyeler">
+                  <Users />
+                  <span>Üyeler</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
+                <Link href="/admin/personel">
+                  <UserCog />
+                  <span>Personel</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
