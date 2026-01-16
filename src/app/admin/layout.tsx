@@ -40,6 +40,11 @@ export default function AdminLayout({
     }
     router.push('/giris');
   }
+  
+  // If the user is on the login page, don't apply the admin layout or protection.
+  if (pathname === '/admin/giris') {
+    return <>{children}</>;
+  }
 
   // While the admin check is loading, show a loading screen.
   // This prevents a flash of the admin content or a premature redirect.
