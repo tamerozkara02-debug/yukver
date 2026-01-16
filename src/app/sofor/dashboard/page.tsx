@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function SoforDashboard() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function SoforDashboard() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const watchIdRef = useRef<number | null>(null);
 
   const driverDocRef = useMemoFirebase(
     () => (firestore && user ? doc(firestore, 'drivers', user.uid) : null),
@@ -63,6 +65,10 @@ export default function SoforDashboard() {
           vehicleType: driverData.vehicleType || '',
           vehiclePlate: driverData.vehiclePlate || '',
       });
+      // Sync tracking state with DB if location is present
+      if (driverData.latitude && driverData.longitude) {
+          setIsTracking(true);
+      }
     }
   }, [driverData]);
 
@@ -93,56 +99,6 @@ export default function SoforDashboard() {
       });
     }
   };
-
-
-  // GPS Tracking Effect
-  useEffect(() => {
-    let watchId: number | null = null;
-    if (isTracking && driverDocRef) {
-      if (!navigator.geolocation) {
-        setLocationError('GPS bu tarayıcıda desteklenmiyor.');
-        setIsTracking(false);
-        return;
-      }
-
-      watchId = navigator.geolocation.watchPosition(
-        position => {
-          const { latitude, longitude } = position.coords;
-          updateDoc(driverDocRef, {
-            latitude,
-            longitude,
-            lastLocationUpdate: serverTimestamp(),
-          }).catch(error => {
-            console.error('Konum güncellenirken hata oluştu:', error);
-          });
-          setLocationError(null);
-        },
-        error => {
-          let message = 'Konum alınamadı. Lütfen konum servislerini kontrol edin.';
-          if (error.code === error.PERMISSION_DENIED) {
-            message = 'Konum izni reddedildi. Lütfen tarayıcı ayarlarından izin verin.';
-          }
-          setLocationError(message);
-          setIsTracking(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
-    return () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    };
-  }, [isTracking, driverDocRef]);
-
-  // Location Error Toast Effect
-  useEffect(() => {
-    if (locationError) {
-      toast({
-        variant: 'destructive',
-        title: 'Konum Hatası',
-        description: locationError,
-      });
-    }
-  }, [locationError, toast]);
   
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0] && driverDocRef) {
@@ -165,6 +121,106 @@ export default function SoforDashboard() {
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
+
+  const stopTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setIsTracking(false);
+    if (driverDocRef) {
+      updateDoc(driverDocRef, {
+        latitude: null,
+        longitude: null,
+        lastLocationUpdate: serverTimestamp(),
+      });
+    }
+  };
+
+  const handleTrackingToggle = (shouldTrack: boolean) => {
+    setLocationError(null);
+
+    if (!shouldTrack) {
+      stopTracking();
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      const errorMsg = 'Konum servisleri bu tarayıcıda desteklenmiyor.';
+      setLocationError(errorMsg);
+      toast({ variant: 'destructive', title: 'Konum Hatası', description: errorMsg });
+      return;
+    }
+
+    setIsTracking(true); // Optimistically set UI to on
+    
+    // Get current position to trigger permission prompt if needed
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        // Success: We have permission and an initial position.
+        const { latitude, longitude } = position.coords;
+        if (driverDocRef) {
+          updateDoc(driverDocRef, {
+            latitude,
+            longitude,
+            lastLocationUpdate: serverTimestamp(),
+          });
+        }
+        // The watch effect will take over from here.
+      },
+      (error) => {
+        // Error: Permission was likely denied.
+        let message = 'Konum alınamadı. Cihazınızın konum servislerinin açık olduğundan emin olun.';
+        if (error.code === error.PERMISSION_DENIED) {
+          message = 'Konum izni reddedildi. Konum takibini kullanmak için lütfen tarayıcı veya cihaz ayarlarınızdan bu site için konum iznini etkinleştirin.';
+        }
+        setLocationError(message);
+        setIsTracking(false); // Flip the switch back off
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  };
+  
+  // Effect for continuous location watching
+  useEffect(() => {
+    if (isTracking && driverDocRef) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          setLocationError(null); // Clear any previous error on a successful read
+          const { latitude, longitude } = position.coords;
+          updateDoc(driverDocRef, {
+            latitude,
+            longitude,
+            lastLocationUpdate: serverTimestamp(),
+          }).catch((dbError) => {
+            console.error('Firestore location update error:', dbError);
+          });
+        },
+        (error) => {
+          let message = 'Anlık konum alınamıyor. Lütfen konum servislerinizi kontrol edin.';
+           if (error.code === error.PERMISSION_DENIED) {
+            message = 'Konum izni iptal edildi. Takibi yeniden başlatmak için özelliği kapatıp açın ve izin verin.';
+          }
+          setLocationError(message);
+          setIsTracking(false); // Stop tracking on error
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      // Cleanup if isTracking becomes false for any reason
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    }
+    
+    // Cleanup on component unmount
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, [isTracking, driverDocRef]);
 
 
   const handleStatusUpdate = async () => {
@@ -312,12 +368,21 @@ export default function SoforDashboard() {
                   <div className="flex-1 space-y-1">
                     <p className="text-sm font-medium leading-none">Konum Paylaşımını Aktifleştir</p>
                     <p className="text-sm text-muted-foreground">
-                      {isTracking ? 'Konumunuz anlık olarak paylaşılıyor.' : 'Konum takibi kapalı.'}
+                      {isTracking && !locationError 
+                        ? 'Konumunuz anlık olarak paylaşılıyor.' 
+                        : 'Konum takibi kapalı.'}
                     </p>
                   </div>
-                  <Switch id="tracking-switch" checked={isTracking} onCheckedChange={setIsTracking} />
+                  <Switch id="tracking-switch" checked={isTracking} onCheckedChange={handleTrackingToggle} />
                 </div>
-                {isTracking && (
+                 {locationError && (
+                    <Alert variant="destructive" className="mt-4">
+                        <LocateFixed className="h-4 w-4" />
+                        <AlertTitle>Konum Erişimi Sorunu</AlertTitle>
+                        <AlertDescription>{locationError}</AlertDescription>
+                    </Alert>
+                )}
+                {isTracking && !locationError && (
                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-green-500" />
                     GPS aktif. Konumunuz periyodik olarak güncelleniyor.
