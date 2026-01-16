@@ -51,25 +51,38 @@ const createStaffFlow = ai.defineFlow(
     outputSchema: CreateStaffOutputSchema,
   },
   async ({ email, password, permissions }) => {
-    // 1. Create user in Firebase Authentication
-    const userRecord = await getAuth().createUser({
-      email,
-      password,
-    });
+    try {
+      // 1. Create user in Firebase Authentication
+      const userRecord = await getAuth().createUser({
+        email,
+        password,
+      });
 
-    // 2. Create the admin role document in Firestore
-    const db = getFirestore();
-    const adminRoleRef = db.collection('roles_admin').doc(userRecord.uid);
-    await adminRoleRef.set({
-      id: userRecord.uid,
-      username: userRecord.email,
-      permissions: permissions, // Save permissions object
-    });
+      // 2. Create the admin role document in Firestore
+      const db = getFirestore();
+      const adminRoleRef = db.collection('roles_admin').doc(userRecord.uid);
+      await adminRoleRef.set({
+        id: userRecord.uid,
+        username: userRecord.email,
+        permissions: permissions, // Save permissions object
+      });
 
-    return {
-      uid: userRecord.uid,
-      email: userRecord.email!,
-    };
+      return {
+        uid: userRecord.uid,
+        email: userRecord.email!,
+      };
+    } catch (error: any) {
+      console.error("Error in createStaffFlow:", error);
+
+      if (error.code === 'auth/email-already-exists') {
+        throw new Error('Bu e-posta adresi zaten kullanımda.');
+      }
+      if (error.code === 'auth/invalid-password') {
+        throw new Error('Şifre en az 6 karakter olmalıdır.');
+      }
+      
+      throw new Error(`Personel oluşturulamadı: Sunucu tarafında bir hata oluştu. (${error.message})`);
+    }
   }
 );
 
