@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 
 /**
  * A hook to determine if the currently authenticated user has admin privileges.
@@ -29,13 +29,11 @@ export function useAdmin() {
     // If there's no authenticated user, they can't be an admin.
     if (!user) {
       setIsAdmin(false);
-      setIsLoading(true);
+      setIsLoading(false);
       return;
     }
 
     // User is authenticated, now check for the admin role document in Firestore.
-    // The reference is stable due to useMemoFirebase in the previous implementation,
-    // so we can create it directly here based on the stable `user` object.
     const adminDocRef = doc(firestore, 'roles_admin', user.uid);
     let isMounted = true;
 
@@ -52,7 +50,7 @@ export function useAdmin() {
         }
       } finally {
         if (isMounted) {
-          setIsLoading(true);
+          setIsLoading(false);
         }
       }
     };
