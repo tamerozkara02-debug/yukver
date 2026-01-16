@@ -25,6 +25,8 @@ import { collection } from "firebase/firestore"
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { createStaffUser, deleteStaffUser } from "@/ai/flows/staff-management-flow"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 
 export default function AdminPersonelPage() {
     const firestore = useFirestore();
@@ -46,8 +48,15 @@ export default function AdminPersonelPage() {
             return;
         }
 
+        const permissions = {
+            canViewDashboard: (event.currentTarget.elements.namedItem('p-canViewDashboard') as HTMLInputElement)?.checked,
+            canTrackLocations: (event.currentTarget.elements.namedItem('p-canTrackLocations') as HTMLInputElement)?.checked,
+            canManageMembers: (event.currentTarget.elements.namedItem('p-canManageMembers') as HTMLInputElement)?.checked,
+            canManageStaff: (event.currentTarget.elements.namedItem('p-canManageStaff') as HTMLInputElement)?.checked,
+        };
+
         try {
-            const newUser = await createStaffUser({ email, password });
+            const newUser = await createStaffUser({ email, password, permissions });
             toast({ title: 'Başarılı', description: `Yeni personel (${newUser.email}) eklendi.`});
             setIsDialogOpen(false);
             
@@ -112,6 +121,27 @@ export default function AdminPersonelPage() {
                         <Label htmlFor="p-password" className="text-right">Şifre</Label>
                         <Input id="p-password" name="p-password" type="password" defaultValue="tamernecla2362" className="col-span-3" minLength={6}/>
                     </div>
+                     <div className="grid grid-cols-4 items-start gap-4">
+                        <Label className="text-right pt-2">Yetkiler</Label>
+                        <div className="col-span-3 space-y-2">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="p-canViewDashboard" name="p-canViewDashboard" defaultChecked={true} />
+                                <Label htmlFor="p-canViewDashboard" className="font-normal">Dashboard Görüntüleme</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="p-canTrackLocations" name="p-canTrackLocations" />
+                                <Label htmlFor="p-canTrackLocations" className="font-normal">Konum Takibi</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox id="p-canManageMembers" name="p-canManageMembers" />
+                                <Label htmlFor="p-canManageMembers" className="font-normal">Üye Yönetimi</Label>
+                            </div>
+                             <div className="flex items-center space-x-2">
+                                <Checkbox id="p-canManageStaff" name="p-canManageStaff" />
+                                <Label htmlFor="p-canManageStaff" className="font-normal">Personel Yönetimi</Label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button type="submit">Kaydet</Button>
@@ -131,14 +161,22 @@ export default function AdminPersonelPage() {
             <TableHeader>
                 <TableRow>
                 <TableHead>Kullanıcı Adı</TableHead>
+                <TableHead>Yetkiler</TableHead>
                 <TableHead className="text-right">İşlemler</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {isLoading && <TableRow><TableCell colSpan={2}>Yükleniyor...</TableCell></TableRow>}
+                {isLoading && <TableRow><TableCell colSpan={3}>Yükleniyor...</TableCell></TableRow>}
                 {!isLoading && personel && personel.map((p: any) => (
                 <TableRow key={p.id}>
                     <TableCell>{p.username}</TableCell>
+                    <TableCell className="space-x-1">
+                      {p.permissions?.canViewDashboard && <Badge variant="outline">Dashboard</Badge>}
+                      {p.permissions?.canTrackLocations && <Badge variant="outline">Konum</Badge>}
+                      {p.permissions?.canManageMembers && <Badge variant="outline">Üyeler</Badge>}
+                      {p.permissions?.canManageStaff && <Badge variant="outline" className="bg-destructive text-destructive-foreground border-destructive">Personel</Badge>}
+                      {!p.permissions && <Badge variant="secondary">Yetki Yok</Badge>}
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
                     <Button variant="outline" size="icon" disabled><Edit className="h-4 w-4"/></Button>
                     <Button variant="destructive" size="icon" onClick={() => handleDeleteStaff(p.id)} disabled={p.id === user?.uid}><Trash2 className="h-4 w-4"/></Button>
@@ -147,7 +185,7 @@ export default function AdminPersonelPage() {
                 ))}
                 {!isLoading && (!personel || personel.length === 0) && (
                     <TableRow>
-                        <TableCell colSpan={2} className="text-center">Henüz personel eklenmemiş.</TableCell>
+                        <TableCell colSpan={3} className="text-center">Henüz personel eklenmemiş.</TableCell>
                     </TableRow>
                 )}
             </TableBody>

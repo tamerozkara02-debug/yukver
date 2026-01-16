@@ -9,26 +9,28 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps } from 'firebase-admin/app';
 
 // Initialize Firebase Admin SDK if not already initialized
-if (!getApps().length) {
-  const serviceAccount = process.env.SERVICE_ACCOUNT_KEY
-    ? JSON.parse(process.env.SERVICE_ACCOUNT_KEY)
-    : undefined;
-
-  initializeApp({
-    credential: serviceAccount ? cert(serviceAccount) : undefined,
-  });
+if (getApps().length === 0) {
+  initializeApp();
 }
 
 //-/////////////////////////////////////////////////////////////////
 // Create Staff Flow
 //-/////////////////////////////////////////////////////////////////
 
+const PermissionsSchema = z.object({
+  canViewDashboard: z.boolean().default(true).describe('Can view the main dashboard.'),
+  canTrackLocations: z.boolean().default(false).describe('Can view driver locations.'),
+  canManageMembers: z.boolean().default(false).describe('Can view and manage firms and drivers.'),
+  canManageStaff: z.boolean().default(false).describe('Can create, view, and delete other staff members.'),
+});
+
 const CreateStaffInputSchema = z.object({
   email: z.string().email().describe('The email for the new staff user.'),
   password: z.string().min(6).describe('The password for the new staff user (min 6 chars).'),
+  permissions: PermissionsSchema,
 });
 export type CreateStaffInput = z.infer<typeof CreateStaffInputSchema>;
 
@@ -48,7 +50,7 @@ const createStaffFlow = ai.defineFlow(
     inputSchema: CreateStaffInputSchema,
     outputSchema: CreateStaffOutputSchema,
   },
-  async ({ email, password }) => {
+  async ({ email, password, permissions }) => {
     // 1. Create user in Firebase Authentication
     const userRecord = await getAuth().createUser({
       email,
@@ -61,6 +63,7 @@ const createStaffFlow = ai.defineFlow(
     await adminRoleRef.set({
       id: userRecord.uid,
       username: userRecord.email,
+      permissions: permissions, // Save permissions object
     });
 
     return {

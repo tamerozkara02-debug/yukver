@@ -21,6 +21,8 @@ import { signOut } from "firebase/auth"
 import { useAdmin } from "@/hooks/use-admin"
 import { useToast } from "@/hooks/use-toast"
 
+type PermissionKey = 'canViewDashboard' | 'canTrackLocations' | 'canManageMembers' | 'canManageStaff';
+
 export default function AdminLayout({
   children,
 }: {
@@ -29,7 +31,7 @@ export default function AdminLayout({
   const pathname = usePathname()
   const router = useRouter();
   const auth = useAuth();
-  const { isAdmin, isLoading: isAdminLoading } = useAdmin();
+  const { isAdmin, adminData, isLoading: isAdminLoading } = useAdmin();
   const { toast } = useToast();
 
   const isActive = (path: string) => pathname === path
@@ -46,9 +48,6 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  // The admin protection logic is temporarily removed to allow the first admin to be created.
-  // After creating the first admin user, please ask to re-enable this protection.
-  /*
   if (isAdminLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -71,9 +70,35 @@ export default function AdminLayout({
       </div>
     );
   }
-  */
+  
+  const pagePermissions: Record<string, PermissionKey | undefined> = {
+    '/admin/dashboard': 'canViewDashboard',
+    '/admin/konum-takibi': 'canTrackLocations',
+    '/admin/uyeler': 'canManageMembers',
+    '/admin/personel': 'canManageStaff',
+  };
 
-  // If loading is finished and the user IS an admin, render the layout.
+  const requiredPermission = pagePermissions[pathname];
+
+  if (requiredPermission && adminData && !adminData.permissions?.[requiredPermission]) {
+    const firstAllowedPage = [
+        { perm: 'canViewDashboard', path: '/admin/dashboard'},
+        { perm: 'canTrackLocations', path: '/admin/konum-takibi'},
+        { perm: 'canManageMembers', path: '/admin/uyeler'},
+        { perm: 'canManageStaff', path: '/admin/personel'},
+    ].find(p => adminData.permissions?.[p.perm as PermissionKey])?.path || '/giris';
+
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4 text-center p-4">
+          <h1 className="text-2xl font-bold text-destructive">Erişim Reddedildi</h1>
+          <p className="text-muted-foreground">Bu sayfaya erişim yetkiniz bulunmuyor.</p>
+          <Button onClick={() => router.replace(firstAllowedPage)}>Panele Geri Dön</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <SidebarProvider>
       <Sidebar>
@@ -85,38 +110,46 @@ export default function AdminLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
-                <Link href="/admin/dashboard">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
-                <Link href="/admin/konum-takibi">
-                  <Map />
-                  <span>Konum Takibi</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
-                <Link href="/admin/uyeler">
-                  <Users />
-                  <span>Üyeler</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
-                <Link href="/admin/personel">
-                  <UserCog />
-                  <span>Personel</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {adminData?.permissions?.canViewDashboard && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
+                  <Link href="/admin/dashboard">
+                    <LayoutDashboard />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+             {adminData?.permissions?.canTrackLocations && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
+                    <Link href="/admin/konum-takibi">
+                      <Map />
+                      <span>Konum Takibi</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+             )}
+            {adminData?.permissions?.canManageMembers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
+                  <Link href="/admin/uyeler">
+                    <Users />
+                    <span>Üyeler</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {adminData?.permissions?.canManageStaff && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
+                  <Link href="/admin/personel">
+                    <UserCog />
+                    <span>Personel</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>

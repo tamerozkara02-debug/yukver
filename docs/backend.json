@@ -12,9 +12,19 @@
         "username": {
           "type": "string",
           "description": "The admin's username, typically their email."
+        },
+        "permissions": {
+            "type": "object",
+            "properties": {
+                "canViewDashboard": { "type": "boolean" },
+                "canTrackLocations": { "type": "boolean" },
+                "canManageMembers": { "type": "boolean" },
+                "canManageStaff": { "type": "boolean" }
+            },
+            "description": "Object defining the user's specific permissions."
         }
       },
-      "required": ["id", "username"]
+      "required": ["id", "username", "permissions"]
     },
     "Firm": {
         "title": "Firm",
