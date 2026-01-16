@@ -18,19 +18,15 @@ export default function GirisTabs() {
             </h1>
           </Link>
         </div>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="firma">Firma</TabsTrigger>
           <TabsTrigger value="sofor">Şoför</TabsTrigger>
-          <TabsTrigger value="personel">Personel</TabsTrigger>
         </TabsList>
         <TabsContent value="firma">
            <GirisPage initialRole="firma" />
         </TabsContent>
         <TabsContent value="sofor">
            <GirisPage initialRole="sofor" />
-        </TabsContent>
-        <TabsContent value="personel">
-            <GirisPage initialRole="admin" />
         </TabsContent>
       </Tabs>
     </div>
