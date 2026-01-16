@@ -70,6 +70,21 @@
             "createdAt": { "type": "string", "format": "date-time" }
         },
         "required": ["firmId", "loadType", "tonnage", "originCity", "originDistrict", "destinationCity", "destinationDistrict", "requiredVehicleType"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Represents a review from one user to another.",
+      "type": "object",
+      "properties": {
+        "reviewerId": { "type": "string", "description": "UID of the user writing the review." },
+        "reviewerRole": { "type": "string", "enum": ["firma", "sofor", "admin"] },
+        "revieweeId": { "type": "string", "description": "UID of the user being reviewed." },
+        "revieweeRole": { "type": "string", "enum": ["firma", "sofor"] },
+        "rating": { "type": "number", "description": "Rating from 1 to 5." },
+        "comment": { "type": "string", "description": "The text content of the review." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["reviewerId", "reviewerRole", "revieweeId", "revieweeRole", "rating", "comment", "createdAt"]
     }
   },
   "auth": {
@@ -99,6 +114,11 @@
             "path": "/roles_admin/{userId}",
             "schema": { "$ref": "#/entities/Admin" },
             "description": "Stores documents for users with admin roles."
+        },
+        {
+            "path": "/reviews/{reviewId}",
+            "schema": { "$ref": "#/entities/Review" },
+            "description": "Stores all reviews between users."
         }
     ]
   }

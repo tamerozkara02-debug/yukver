@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { placeholderImages } from '@/lib/placeholder-images';
-import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera, Save } from 'lucide-react';
+import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera, Save, MessageSquare, Star } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { doc, serverTimestamp, updateDoc, collection, addDoc, getDocs } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +19,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 export default function SoforDashboard() {
   const router = useRouter();
@@ -53,6 +55,33 @@ export default function SoforDashboard() {
     vehicleType: '',
     vehiclePlate: '',
   });
+
+  // State for review form
+  const [allFirms, setAllFirms] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [selectedFirm, setSelectedFirm] = useState('');
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+
+  // Fetch firms for the review dropdown
+  useEffect(() => {
+    if (!firestore) return;
+    const fetchFirms = async () => {
+      try {
+        const firmsCollectionRef = collection(firestore, 'firms');
+        const querySnapshot = await getDocs(firmsCollectionRef);
+        const firmsList = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        setAllFirms(firmsList as any);
+      } catch(e) {
+          console.error("Error fetching firms for review form: ", e);
+      }
+    };
+    fetchFirms();
+  }, [firestore]);
+
 
   // Populate form when driverData is loaded
   useEffect(() => {
@@ -129,7 +158,6 @@ export default function SoforDashboard() {
       watchIdRef.current = null;
     }
     setIsTracking(false);
-    // If tracking is stopped, we keep the last location in the database.
   };
 
   const handleTrackingToggle = (shouldTrack: boolean) => {
@@ -137,9 +165,7 @@ export default function SoforDashboard() {
     setTrackingOffWarning(false);
 
     if (!shouldTrack) {
-      // User wants to turn tracking OFF
       if (driverData?.isAvailable === false) {
-        // Driver is busy, show a persistent warning.
         setTrackingOffWarning(true);
       }
       stopTracking();
@@ -153,41 +179,39 @@ export default function SoforDashboard() {
       return;
     }
 
-    setIsTracking(true); // Optimistically set UI to on
+    setIsTracking(true); 
     
-    // Get current position to trigger permission prompt if needed
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // Success: We have permission and an initial position.
         const { latitude, longitude } = position.coords;
         if (driverDocRef) {
-          updateDoc(driverDocRef, {
-            latitude,
-            longitude,
-            lastLocationUpdate: serverTimestamp(),
-          });
+            updateDoc(driverDocRef, {
+                latitude,
+                longitude,
+                lastLocationUpdate: serverTimestamp(),
+            }).catch(dbError => {
+                // Non-blocking update, but log error if it happens
+                console.error("Initial location update failed:", dbError);
+            });
         }
-        // The watch effect will take over from here.
       },
       (error) => {
-        // Error: Permission was likely denied.
         let message = 'Konum alınamadı. Cihazınızın konum servislerinin açık olduğundan emin olun.';
         if (error.code === error.PERMISSION_DENIED) {
           message = 'Konum izni reddedildi. Konum takibini kullanmak için lütfen tarayıcı veya cihaz ayarlarınızdan bu site için konum iznini etkinleştirin.';
         }
         setLocationError(message);
-        setIsTracking(false); // Flip the switch back off
+        setIsTracking(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
   
-  // Effect for continuous location watching
   useEffect(() => {
     if (isTracking && driverDocRef) {
       watchIdRef.current = navigator.geolocation.watchPosition(
         (position) => {
-          setLocationError(null); // Clear any previous error on a successful read
+          setLocationError(null);
           const { latitude, longitude } = position.coords;
           updateDoc(driverDocRef, {
             latitude,
@@ -201,20 +225,20 @@ export default function SoforDashboard() {
           let message = 'Anlık konum alınamıyor. Lütfen konum servislerinizi kontrol edin.';
            if (error.code === error.PERMISSION_DENIED) {
             message = 'Konum izni iptal edildi. Takibi yeniden başlatmak için özelliği kapatıp açın ve izin verin.';
+            setIsTracking(false);
           }
           setLocationError(message);
-          stopTracking(); // Stop tracking on error
+          stopTracking();
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      // Cleanup if isTracking becomes false for any reason
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
       }
     }
     
-    // Cleanup on component unmount
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
@@ -247,6 +271,49 @@ export default function SoforDashboard() {
     }
   };
 
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !firestore || !selectedFirm || rating === 0 || !comment) {
+        toast({
+            variant: 'destructive',
+            title: 'Eksik Bilgi',
+            description: 'Lütfen firma seçimi, puanlama ve yorum alanlarının tümünü doldurun.',
+        });
+        return;
+    }
+    setIsReviewSubmitting(true);
+    try {
+        const reviewsCollectionRef = collection(firestore, 'reviews');
+        await addDoc(reviewsCollectionRef, {
+            reviewerId: user.uid,
+            reviewerRole: 'sofor',
+            revieweeId: selectedFirm,
+            revieweeRole: 'firma',
+            rating,
+            comment,
+            createdAt: serverTimestamp(),
+        });
+        toast({
+            title: 'Başarılı',
+            description: 'Değerlendirmeniz başarıyla gönderildi. Teşekkür ederiz!',
+        });
+        // Clear form
+        setSelectedFirm('');
+        setRating(0);
+        setComment('');
+    } catch (error) {
+        console.error('Error submitting review:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Hata',
+            description: 'Değerlendirme gönderilemedi. Lütfen daha sonra tekrar deneyin.',
+        });
+    } finally {
+        setIsReviewSubmitting(false);
+    }
+}
+
+
   const handleSignOut = async () => {
     await signOut(auth);
     router.push('/giris');
@@ -257,9 +324,7 @@ export default function SoforDashboard() {
   }
   
   if (error) {
-    // This can happen if the user is not a driver
-    // router.push('/giris');
-    return <div>Hata: Sürücü profili yüklenemedi.</div>
+    return <div>Hata: Sürücü profili yüklenemedi. Lütfen tekrar giriş yapmayı deneyin.</div>
   }
 
   return (
@@ -521,6 +586,64 @@ export default function SoforDashboard() {
                   <strong className="text-muted-foreground w-24 inline-block">Plaka:</strong> {driverData?.vehiclePlate}
                 </p>
               </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle className="font-headline text-xl flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-primary" />
+                        Firma Değerlendir
+                    </CardTitle>
+                    <CardDescription>
+                        İşbirliği yaptığınız firma hakkında geri bildirimde bulunun.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Alert>
+                        <AlertTitle className="font-semibold">Gizlilik ve Amaç</AlertTitle>
+                        <AlertDescription className="text-xs">
+                            Paylaştığınız geri bildirimler, hizmet kalitemizi artırmak ve platformumuzdaki profesyonel iş ahlakını teşvik etmek amacıyla kullanılır. Yorumlarınız üçüncü taraflarla paylaşılmayacak olup, yalnızca şirket içi değerlendirme süreçlerimizde dikkate alınacaktır.
+                        </AlertDescription>
+                    </Alert>
+                    <form onSubmit={handleReviewSubmit} className="space-y-4 mt-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="firm-select">Değerlendirilecek Firma</Label>
+                            <Select value={selectedFirm} onValueChange={setSelectedFirm}>
+                                <SelectTrigger id="firm-select">
+                                    <SelectValue placeholder="Firma seçiniz..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {allFirms.map(firm => (
+                                        <SelectItem key={firm.id} value={firm.id}>
+                                            {firm.firstName} {firm.lastName}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Puanınız</Label>
+                            <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                        key={star}
+                                        className={cn(
+                                            'w-6 h-6 cursor-pointer transition-colors',
+                                            rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 hover:text-gray-400'
+                                        )}
+                                        onClick={() => setRating(star)}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="comment-sofor">Yorumunuz</Label>
+                            <Textarea id="comment-sofor" value={comment} onChange={e => setComment(e.target.value)} placeholder="Firmanın iletişimi, ödeme süreci ve genel tutumu hakkındaki düşüncelerinizi paylaşın." required/>
+                        </div>
+                        <Button type="submit" className="w-full" disabled={isReviewSubmitting}>
+                            {isReviewSubmitting ? 'Gönderiliyor...' : 'Değerlendirmeyi Gönder'}
+                        </Button>
+                    </form>
+                </CardContent>
             </Card>
           </div>
       </main>

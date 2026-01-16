@@ -31,6 +31,8 @@ import {
   Trash2,
   Camera,
   Save,
+  Star,
+  MessageSquare,
 } from 'lucide-react';
 import {
   useAuth,
@@ -49,6 +51,7 @@ import {
   serverTimestamp,
   deleteDoc,
   updateDoc,
+  getDocs,
 } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -71,6 +74,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 export default function FirmaDashboard() {
   const router = useRouter();
@@ -117,6 +122,34 @@ export default function FirmaDashboard() {
     taxNumber: '',
   });
 
+  // State for review form
+  const [allDrivers, setAllDrivers] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [selectedDriver, setSelectedDriver] = useState('');
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+
+  // Fetch drivers for the review dropdown
+  useEffect(() => {
+    if (!firestore) return;
+    const fetchDrivers = async () => {
+        try {
+            const driversCollectionRef = collection(firestore, 'drivers');
+            const querySnapshot = await getDocs(driversCollectionRef);
+            const driversList = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                firstName: doc.data().firstName,
+                lastName: doc.data().lastName,
+                ...doc.data()
+            }));
+            setAllDrivers(driversList as any);
+        } catch(e) {
+            console.error("Error fetching drivers for review form: ", e);
+        }
+    };
+    fetchDrivers();
+  }, [firestore]);
+  
   useEffect(() => {
     if (firmData) {
       setEditData({
@@ -225,6 +258,49 @@ export default function FirmaDashboard() {
       setIsSubmitting(false);
     }
   };
+  
+    const handleReviewSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !firestore || !selectedDriver || rating === 0 || !comment) {
+            toast({
+                variant: 'destructive',
+                title: 'Eksik Bilgi',
+                description: 'Lütfen şoför seçimi, puanlama ve yorum alanlarının tümünü doldurun.',
+            });
+            return;
+        }
+        setIsReviewSubmitting(true);
+        try {
+            const reviewsCollectionRef = collection(firestore, 'reviews');
+            await addDoc(reviewsCollectionRef, {
+                reviewerId: user.uid,
+                reviewerRole: 'firma',
+                revieweeId: selectedDriver,
+                revieweeRole: 'sofor',
+                rating,
+                comment,
+                createdAt: serverTimestamp(),
+            });
+            toast({
+                title: 'Başarılı',
+                description: 'Değerlendirmeniz başarıyla gönderildi. Teşekkür ederiz!',
+            });
+            // Clear form
+            setSelectedDriver('');
+            setRating(0);
+            setComment('');
+        } catch (error) {
+            console.error('Error submitting review:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Hata',
+                description: 'Değerlendirme gönderilemedi. Lütfen daha sonra tekrar deneyin.',
+            });
+        } finally {
+            setIsReviewSubmitting(false);
+        }
+    }
+
 
   const handleDeleteLoad = async (loadId: string) => {
     if (!firestore || !user) return;
@@ -547,7 +623,7 @@ export default function FirmaDashboard() {
           </Card>
         </div>
 
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-8">
           <Card>
             <CardHeader>
               <CardTitle className="font-headline text-2xl">
@@ -616,6 +692,64 @@ export default function FirmaDashboard() {
               )}
             </CardContent>
           </Card>
+           <Card>
+            <CardHeader>
+                <CardTitle className="font-headline text-2xl flex items-center gap-2">
+                    <MessageSquare className="w-6 h-6 text-primary" />
+                    Şoför Değerlendir
+                </CardTitle>
+                <CardDescription>
+                    Tamamlanan taşıma sonrası şoför hakkında geri bildirimde bulunun.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <Alert>
+                    <AlertTitle className="font-semibold">Gizlilik ve Amaç</AlertTitle>
+                    <AlertDescription className="text-xs">
+                        Paylaştığınız geri bildirimler, hizmet kalitemizi artırmak ve platformumuzdaki profesyonel iş ahlakını teşvik etmek amacıyla kullanılır. Yorumlarınız üçüncü taraflarla paylaşılmayacak olup, yalnızca şirket içi değerlendirme süreçlerimizde dikkate alınacaktır. Anlayışınız için teşekkür ederiz.
+                    </AlertDescription>
+                </Alert>
+                <form onSubmit={handleReviewSubmit} className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="driver-select">Değerlendirilecek Şoför</Label>
+                        <Select value={selectedDriver} onValueChange={setSelectedDriver}>
+                            <SelectTrigger id="driver-select">
+                                <SelectValue placeholder="Şoför seçiniz..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {allDrivers.map(driver => (
+                                    <SelectItem key={driver.id} value={driver.id}>
+                                        {driver.firstName} {driver.lastName}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                         <Label>Puanınız</Label>
+                         <div className="flex gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                    key={star}
+                                    className={cn(
+                                        'w-6 h-6 cursor-pointer transition-colors',
+                                        rating >= star ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300 hover:text-gray-400'
+                                    )}
+                                    onClick={() => setRating(star)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="comment">Yorumunuz</Label>
+                        <Textarea id="comment" value={comment} onChange={e => setComment(e.target.value)} placeholder="Şoförün performansı, iletişim becerileri ve profesyonelliği hakkındaki düşüncelerinizi paylaşın." required/>
+                    </div>
+                     <Button type="submit" className="w-full" disabled={isReviewSubmitting}>
+                        {isReviewSubmitting ? 'Gönderiliyor...' : 'Değerlendirmeyi Gönder'}
+                    </Button>
+                </form>
+            </CardContent>
+           </Card>
         </div>
       </main>
     </div>
