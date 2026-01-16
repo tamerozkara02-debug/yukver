@@ -48,9 +48,10 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
-    // ROLES_ADMIN: Only other admins can read or write to this collection
+    // ROLES_ADMIN: Users can read their own admin status. Only existing admins can manage the collection.
     match /roles_admin/{userId} {
-        allow get, list, create, delete: if isAdmin();
+        allow get: if isOwner(userId);
+        allow list, create, delete: if isAdmin();
     }
     
     // Default rule: Deny all reads and writes by default.
