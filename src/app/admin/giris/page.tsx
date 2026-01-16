@@ -26,10 +26,6 @@ export default function AdminGirisPage() {
                     <h1 className="text-2xl font-bold text-foreground font-headline">MAÇA LOJİSTİK MERKEZİ</h1>
                 </Link>
             </div>
-          <CardTitle className="font-headline text-2xl">Personel Girişi</CardTitle>
-          <CardDescription>
-            Yönetim paneline erişmek için giriş yapın.
-          </CardDescription>
         </CardHeader>
         <CardContent>
             <GirisPage initialRole="admin" />
