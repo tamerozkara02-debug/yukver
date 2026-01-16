@@ -134,25 +134,30 @@ export default function SoforKayitPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex justify-center mb-4">
-            <div className="relative">
-              <Avatar className="h-24 w-24">
-                {avatarPreview && <AvatarImage src={avatarPreview} alt="Şoför Profili" />}
-                <AvatarFallback>ŞR</AvatarFallback>
-              </Avatar>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                    accept="image/*"
-                    disabled={isSubmitting}
-                />
-              <Button type="button" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-primary hover:bg-primary/90" onClick={handleAvatarClick} disabled={isSubmitting}>
-                <Camera className="h-4 w-4"/>
-                <span className="sr-only">Profil resmini değiştir</span>
-              </Button>
+          <div className="space-y-2">
+            <div className="flex justify-center">
+              <div className="relative">
+                <Avatar className="h-24 w-24">
+                  {avatarPreview && <AvatarImage src={avatarPreview} alt="Şoför Profili" />}
+                  <AvatarFallback>ŞR</AvatarFallback>
+                </Avatar>
+                  <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                      accept="image/*"
+                      disabled={isSubmitting}
+                  />
+                <Button type="button" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8 bg-primary hover:bg-primary/90" onClick={handleAvatarClick} disabled={isSubmitting}>
+                  <Camera className="h-4 w-4"/>
+                  <span className="sr-only">Profil resmini değiştir</span>
+                </Button>
+              </div>
             </div>
+            <p className="text-xs text-center text-muted-foreground px-4">
+                Doğrulama işlemleri için, lütfen araç plakanızın net olarak göründüğü bir fotoğraf yükleyiniz.
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
