@@ -29,7 +29,7 @@ export function useAdmin() {
     // If there's no authenticated user, they can't be an admin.
     if (!user) {
       setIsAdmin(false);
-      setIsLoading(false);
+      setIsLoading(true);
       return;
     }
 
@@ -52,7 +52,7 @@ export function useAdmin() {
         }
       } finally {
         if (isMounted) {
-          setIsLoading(false);
+          setIsLoading(true);
         }
       }
     };
