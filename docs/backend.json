@@ -27,7 +27,9 @@
             "phoneNumber": { "type": "string" },
             "city": { "type": "string" },
             "district": { "type": "string" },
-            "profilePicture": { "type": "string", "format": "uri" }
+            "profilePicture": { "type": "string", "format": "uri" },
+            "taxOffice": { "type": "string" },
+            "taxNumber": { "type": "string" }
         },
         "required": ["id", "firstName", "lastName", "phoneNumber", "city", "district"]
     },

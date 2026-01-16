@@ -67,10 +67,12 @@ export default function FirmaKayitPage() {
         const firstName = formData.get('ad') as string;
         const lastName = formData.get('soyad') as string;
         const phoneNumber = formData.get('telefon') as string;
+        const taxOffice = formData.get('vergi-dairesi') as string;
+        const taxNumber = formData.get('vergi-numarasi') as string;
         const city = formData.get('sehir') as string;
         const district = formData.get('ilce') as string;
 
-        if (!email || !password || !firstName || !lastName || !phoneNumber || !city || !district) {
+        if (!email || !password || !firstName || !lastName || !phoneNumber || !city || !district || !taxOffice || !taxNumber) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen tüm zorunlu alanları doldurun.' });
             setIsSubmitting(false);
             return;
@@ -97,6 +99,8 @@ export default function FirmaKayitPage() {
                     phoneNumber,
                     city,
                     district,
+                    taxOffice,
+                    taxNumber,
                     profilePicture: avatarPreview || '',
                 });
             }
@@ -173,6 +177,16 @@ export default function FirmaKayitPage() {
           <div className="space-y-2">
             <Label htmlFor="telefon">Telefon Numarası</Label>
             <Input id="telefon" name="telefon" type="tel" placeholder="555 123 4567" required disabled={isSubmitting}/>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="vergi-dairesi">Vergi Dairesi</Label>
+              <Input id="vergi-dairesi" name="vergi-dairesi" placeholder="Kadıköy" required disabled={isSubmitting}/>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vergi-numarasi">Vergi Numarası</Label>
+              <Input id="vergi-numarasi" name="vergi-numarasi" placeholder="10 haneli numara" required disabled={isSubmitting}/>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
