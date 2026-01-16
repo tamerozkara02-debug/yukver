@@ -46,8 +46,9 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  // While the admin check is loading, show a loading screen.
-  // This prevents a flash of the admin content or a premature redirect.
+  // The admin protection logic is temporarily removed to allow the first admin to be created.
+  // After creating the first admin user, please ask to re-enable this protection.
+  /*
   if (isAdminLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -59,7 +60,6 @@ export default function AdminLayout({
     );
   }
 
-  // If loading is finished and the user IS NOT an admin, block access.
   if (!isAdmin) {
      return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -71,6 +71,7 @@ export default function AdminLayout({
       </div>
     );
   }
+  */
 
   // If loading is finished and the user IS an admin, render the layout.
   return (
