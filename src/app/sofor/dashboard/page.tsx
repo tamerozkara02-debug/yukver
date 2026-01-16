@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { placeholderImages } from '@/lib/placeholder-images';
-import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera } from 'lucide-react';
+import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera, Save } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, serverTimestamp, updateDoc } from 'firebase/firestore';
@@ -16,6 +16,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function SoforDashboard() {
   const router = useRouter();
@@ -40,13 +42,57 @@ export default function SoforDashboard() {
   const driverAvatar = placeholderImages.find(p => p.id === 'avatar-driver');
   const vehicleImage = placeholderImages.find(p => p.id === 'vehicle-profile');
 
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editData, setEditData] = useState({
+    firstName: '',
+    lastName: '',
+    phoneNumber: '',
+    vehicleType: '',
+    vehiclePlate: '',
+  });
+
   // Populate form when driverData is loaded
   useEffect(() => {
     if (driverData) {
       setCurrentCity(driverData.currentCity || '');
       setIsAvailable(driverData.isAvailable !== false); // Default to true if undefined
+      setEditData({
+          firstName: driverData.firstName || '',
+          lastName: driverData.lastName || '',
+          phoneNumber: driverData.phoneNumber || '',
+          vehicleType: driverData.vehicleType || '',
+          vehiclePlate: driverData.vehiclePlate || '',
+      });
     }
   }, [driverData]);
+
+  const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setEditData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleVehicleTypeChange = (value: string) => {
+    setEditData(prev => ({ ...prev, vehicleType: value }));
+  };
+
+  const handleProfileUpdate = async () => {
+    if (!driverDocRef) return;
+    try {
+      await updateDoc(driverDocRef, editData);
+      toast({
+        title: 'Başarılı',
+        description: 'Profil bilgileriniz güncellendi.',
+      });
+      setIsEditDialogOpen(false);
+    } catch (error) {
+      console.error('Profil güncellenirken hata:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Hata',
+        description: 'Profiliniz güncellenemedi.',
+      });
+    }
+  };
 
 
   // GPS Tracking Effect
@@ -298,10 +344,68 @@ export default function SoforDashboard() {
 
         <div className="space-y-8">
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="font-headline flex items-center gap-2">
                   <UserCircle className="w-6 h-6 text-primary" /> Profil Bilgilerim
                 </CardTitle>
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                  <DialogTrigger asChild>
+                     <Button variant="ghost" size="icon">
+                        <Edit className="w-5 h-5"/>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Profil Bilgilerini Düzenle</DialogTitle>
+                        <DialogDescription>
+                            Değişiklikleri yaptıktan sonra kaydet butonuna tıklayın.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="firstName">Ad</Label>
+                                <Input id="firstName" name="firstName" value={editData.firstName} onChange={handleEditInputChange} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lastName">Soyad</Label>
+                                <Input id="lastName" name="lastName" value={editData.lastName} onChange={handleEditInputChange} />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="phoneNumber">Telefon Numarası</Label>
+                            <Input id="phoneNumber" name="phoneNumber" value={editData.phoneNumber} onChange={handleEditInputChange} />
+                        </div>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="vehicleType">Araç Tipi</Label>
+                                <Select value={editData.vehicleType} onValueChange={handleVehicleTypeChange}>
+                                    <SelectTrigger id="vehicleType">
+                                        <SelectValue placeholder="Araç tipini seçin" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="tir">Tır</SelectItem>
+                                        <SelectItem value="kamyon">Kamyon</SelectItem>
+                                        <SelectItem value="kamyonet">Kamyonet</SelectItem>
+                                        <SelectItem value="treyler">Treyler</SelectItem>
+                                        <SelectItem value="konteyner">Konteyner</SelectItem>
+                                        <SelectItem value="swap-body">Swap Body</SelectItem>
+                                        <SelectItem value="lowbed">Lowbed</SelectItem>
+                                        <SelectItem value="panelvan">Panelvan</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="vehiclePlate">Araç Plakası</Label>
+                                <Input id="vehiclePlate" name="vehiclePlate" value={editData.vehiclePlate} onChange={handleEditInputChange} />
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={handleProfileUpdate}><Save className="mr-2 h-4 w-4"/> Değişiklikleri Kaydet</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardHeader>
               <CardContent className="text-sm space-y-2">
                 <p>
