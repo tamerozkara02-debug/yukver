@@ -40,6 +40,7 @@ export default function SoforDashboard() {
 
   const [isTracking, setIsTracking] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [trackingOffWarning, setTrackingOffWarning] = useState(false);
 
   const driverAvatar = placeholderImages.find(p => p.id === 'avatar-driver');
   const vehicleImage = placeholderImages.find(p => p.id === 'vehicle-profile');
@@ -128,19 +129,19 @@ export default function SoforDashboard() {
       watchIdRef.current = null;
     }
     setIsTracking(false);
-    if (driverDocRef) {
-      updateDoc(driverDocRef, {
-        latitude: null,
-        longitude: null,
-        lastLocationUpdate: serverTimestamp(),
-      });
-    }
+    // If tracking is stopped, we keep the last location in the database.
   };
 
   const handleTrackingToggle = (shouldTrack: boolean) => {
     setLocationError(null);
+    setTrackingOffWarning(false);
 
     if (!shouldTrack) {
+      // User wants to turn tracking OFF
+      if (driverData?.isAvailable === false) {
+        // Driver is busy, show a persistent warning.
+        setTrackingOffWarning(true);
+      }
       stopTracking();
       return;
     }
@@ -202,7 +203,7 @@ export default function SoforDashboard() {
             message = 'Konum izni iptal edildi. Takibi yeniden başlatmak için özelliği kapatıp açın ve izin verin.';
           }
           setLocationError(message);
-          setIsTracking(false); // Stop tracking on error
+          stopTracking(); // Stop tracking on error
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
@@ -210,7 +211,6 @@ export default function SoforDashboard() {
       // Cleanup if isTracking becomes false for any reason
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
       }
     }
     
@@ -225,6 +225,9 @@ export default function SoforDashboard() {
 
   const handleStatusUpdate = async () => {
     if (!driverDocRef) return;
+    if (isAvailable) {
+        setTrackingOffWarning(false);
+    }
     try {
       await updateDoc(driverDocRef, {
         currentCity,
@@ -375,6 +378,15 @@ export default function SoforDashboard() {
                   </div>
                   <Switch id="tracking-switch" checked={isTracking} onCheckedChange={handleTrackingToggle} />
                 </div>
+                {trackingOffWarning && (
+                    <Alert variant="destructive" className="mt-4">
+                        <LocateFixed className="h-4 w-4" />
+                        <AlertTitle>Uyarı: Konum Takibi Kapalı</AlertTitle>
+                        <AlertDescription>
+                            İş durumunuz "Araç Dolu" olarak ayarlı iken konumunuzu kapattınız. Lütfen işiniz bittiğinde durumu "Araç Boş" olarak güncellemeyi ve konumunuzu tekrar açmayı unutmayın.
+                        </AlertDescription>
+                    </Alert>
+                )}
                  {locationError && (
                     <Alert variant="destructive" className="mt-4">
                         <LocateFixed className="h-4 w-4" />
