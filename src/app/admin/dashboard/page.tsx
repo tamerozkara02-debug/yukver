@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
     return firm ? `${firm.firstName} ${firm.lastName}` : 'Bilinmeyen Firma';
   }
 
-  const isFullAdmin = adminData?.permissions?.canManageStaff;
+  const isFullAdmin = adminData?.permissions?.canViewDashboard;
 
   const liveStats = useMemo(() => [
     { title: "Toplam Firma", value: firms?.length.toString() ?? "0", icon: Building, change: "Kayıtlı firmalar" },

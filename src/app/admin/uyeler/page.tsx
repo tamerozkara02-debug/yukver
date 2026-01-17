@@ -22,17 +22,51 @@ import { Phone, MessageCircle, Truck, Building, Loader2 } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
 import { collection } from "firebase/firestore"
 import { useAdmin } from "@/hooks/use-admin"
+import { useState, useMemo } from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { adminData, isLoading: isAdminLoading } = useAdmin();
 
+  // State for filters
+  const [selectedFirmCity, setSelectedFirmCity] = useState<string>('all');
+  const [selectedDriverCity, setSelectedDriverCity] = useState<string>('all');
+
   const firmsCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
   const driversCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
 
   const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
   const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
+  
+  // Memoize unique city lists
+  const firmCities = useMemo(() => {
+    if (!firmalar) return [];
+    const cities = new Set(firmalar.map(f => f.city).filter(Boolean));
+    return ['all', ...Array.from(cities).sort()];
+  }, [firmalar]);
+
+  const driverCities = useMemo(() => {
+    if (!soforler) return [];
+    const cities = new Set(soforler.map(s => s.currentCity).filter(Boolean));
+    return ['all', ...Array.from(cities).sort()];
+  }, [soforler]);
+
+  // Memoize filtered lists
+  const filteredFirmalar = useMemo(() => {
+    if (!firmalar) return [];
+    if (selectedFirmCity === 'all') return firmalar;
+    return firmalar.filter(f => f.city === selectedFirmCity);
+  }, [firmalar, selectedFirmCity]);
+
+  const filteredSoforler = useMemo(() => {
+    if (!soforler) return [];
+    if (selectedDriverCity === 'all') return soforler;
+    return soforler.filter(s => s.currentCity === selectedDriverCity);
+  }, [soforler, selectedDriverCity]);
+
 
   const isLoading = isUserLoading || isLoadingFirms || isLoadingDrivers || isAdminLoading;
 
@@ -62,10 +96,10 @@ export default function AdminUyelerPage() {
       <Tabs defaultValue="firmalar">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="firmalar" className="flex items-center gap-2">
-            <Building className="w-4 h-4" /> Firmalar ({firmalar?.length || 0})
+            <Building className="w-4 h-4" /> Firmalar ({filteredFirmalar?.length || 0})
             </TabsTrigger>
           <TabsTrigger value="soforler" className="flex items-center gap-2">
-            <Truck className="w-4 h-4" /> Şoförler ({soforler?.length || 0})
+            <Truck className="w-4 h-4" /> Şoförler ({filteredSoforler?.length || 0})
             </TabsTrigger>
         </TabsList>
         <TabsContent value="firmalar">
@@ -75,6 +109,21 @@ export default function AdminUyelerPage() {
               <CardDescription>Sisteme kayıtlı tüm firmalar.</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex items-center gap-2 mb-4">
+                <Label htmlFor="firm-city-filter" className="text-sm">Şehre Göre Filtrele:</Label>
+                <Select value={selectedFirmCity} onValueChange={setSelectedFirmCity}>
+                  <SelectTrigger id="firm-city-filter" className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Şehir seçin..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {firmCities.map(city => (
+                      <SelectItem key={city} value={city}>
+                        {city === 'all' ? 'Tüm Şehirler' : city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -86,7 +135,7 @@ export default function AdminUyelerPage() {
                 </TableHeader>
                 <TableBody>
                   {isLoading && <TableRow><TableCell colSpan={4} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
-                  {!isLoading && firmalar?.map((firma: any) => (
+                  {!isLoading && filteredFirmalar?.map((firma: any) => (
                     <TableRow key={firma.id}>
                       <TableCell className="font-medium">{firma.firstName} {firma.lastName}</TableCell>
                       <TableCell>{firma.phoneNumber}</TableCell>
@@ -97,8 +146,8 @@ export default function AdminUyelerPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                   {!isLoading && (!firmalar || firmalar.length === 0) && (
-                    <TableRow><TableCell colSpan={4} className="text-center h-24">Kayıtlı firma bulunmuyor.</TableCell></TableRow>
+                   {!isLoading && (!filteredFirmalar || filteredFirmalar.length === 0) && (
+                    <TableRow><TableCell colSpan={4} className="text-center h-24">{selectedFirmCity === 'all' ? 'Kayıtlı firma bulunmuyor.' : 'Bu şehirde kayıtlı firma bulunmuyor.'}</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -112,6 +161,21 @@ export default function AdminUyelerPage() {
               <CardDescription>Sisteme kayıtlı tüm şoförler.</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="flex items-center gap-2 mb-4">
+                <Label htmlFor="driver-city-filter" className="text-sm">Şehre Göre Filtrele:</Label>
+                <Select value={selectedDriverCity} onValueChange={setSelectedDriverCity}>
+                  <SelectTrigger id="driver-city-filter" className="w-auto min-w-[180px]">
+                    <SelectValue placeholder="Şehir seçin..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {driverCities.map(city => (
+                      <SelectItem key={city} value={city}>
+                        {city === 'all' ? 'Tüm Şehirler' : city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -124,7 +188,7 @@ export default function AdminUyelerPage() {
                 </TableHeader>
                 <TableBody>
                   {isLoading && <TableRow><TableCell colSpan={5} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
-                  {!isLoading && soforler?.map((sofor: any) => (
+                  {!isLoading && filteredSoforler?.map((sofor: any) => (
                     <TableRow key={sofor.id}>
                       <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
                       <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
@@ -140,8 +204,8 @@ export default function AdminUyelerPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                   {!isLoading && (!soforler || soforler.length === 0) && (
-                    <TableRow><TableCell colSpan={5} className="text-center h-24">Kayıtlı şoför bulunmuyor.</TableCell></TableRow>
+                   {!isLoading && (!filteredSoforler || filteredSoforler.length === 0) && (
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">{selectedDriverCity === 'all' ? 'Kayıtlı şoför bulunmuyor.' : 'Bu şehirde kayıtlı şoför bulunmuyor.'}</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>

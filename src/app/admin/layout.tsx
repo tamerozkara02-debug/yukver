@@ -71,6 +71,7 @@ export default function AdminLayout({
     );
   }
   
+  const isFullAdmin = adminData?.permissions?.canViewDashboard;
 
   return (
     <SidebarProvider>
@@ -83,16 +84,14 @@ export default function AdminLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {adminData?.permissions.canViewDashboard && (
-              <SidebarMenuItem>
+            <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
                   <Link href="/admin/dashboard">
-                    <LayoutDashboard />
-                    <span>Dashboard</span>
+                    {isFullAdmin ? <LayoutDashboard /> : <Briefcase />}
+                    <span>{isFullAdmin ? 'Dashboard' : 'Aktif İlanlar'}</span>
                   </Link>
                 </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+            </SidebarMenuItem>
             {adminData?.permissions.canTrackLocations && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
