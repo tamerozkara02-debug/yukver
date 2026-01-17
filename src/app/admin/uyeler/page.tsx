@@ -18,18 +18,21 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Phone, MessageCircle, Truck, Building, Loader2 } from "lucide-react"
+import { Phone, MessageCircle, Truck, Building, Loader2, Trash2 } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { collection } from "firebase/firestore"
+import { collection, doc, deleteDoc } from "firebase/firestore"
 import { useAdmin } from "@/hooks/use-admin"
 import { useState, useMemo } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { adminData, isLoading: isAdminLoading } = useAdmin();
+  const { toast } = useToast();
 
   // State for filters
   const [selectedFirmCity, setSelectedFirmCity] = useState<string>('all');
@@ -41,7 +44,6 @@ export default function AdminUyelerPage() {
   const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
   const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
   
-  // Memoize unique city lists
   const firmCities = useMemo(() => {
     if (!firmalar) return [];
     const cities = new Set(firmalar.map(f => f.city).filter(Boolean));
@@ -54,7 +56,6 @@ export default function AdminUyelerPage() {
     return ['all', ...Array.from(cities).sort()];
   }, [soforler]);
 
-  // Memoize filtered lists
   const filteredFirmalar = useMemo(() => {
     if (!firmalar) return [];
     if (selectedFirmCity === 'all') return firmalar;
@@ -69,6 +70,28 @@ export default function AdminUyelerPage() {
 
 
   const isLoading = isUserLoading || isLoadingFirms || isLoadingDrivers || isAdminLoading;
+  const canManageMembers = adminData?.permissions?.canManageMembers;
+
+  const handleDeleteMember = async (memberId: string, memberType: 'firma' | 'sofor') => {
+    if (!firestore) return;
+    const collectionName = memberType === 'firma' ? 'firms' : 'drivers';
+    const memberDocRef = doc(firestore, collectionName, memberId);
+    
+    try {
+        await deleteDoc(memberDocRef);
+        toast({
+            title: "Üye Silindi",
+            description: `Seçilen ${memberType} sistemden kaldırıldı. (Not: Giriş kaydı devam etmektedir.)`
+        });
+    } catch (error) {
+        console.error(`Error deleting ${memberType}:`, error);
+        toast({
+            variant: "destructive",
+            title: "Hata",
+            description: `Üye silinirken bir hata oluştu.`
+        });
+    }
+  };
 
   if (isLoading) {
     return <div className="flex h-48 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -130,7 +153,7 @@ export default function AdminUyelerPage() {
                     <TableHead>Yetkili</TableHead>
                     <TableHead>Telefon</TableHead>
                     <TableHead>Konum</TableHead>
-                    <TableHead className="text-right">İletişim</TableHead>
+                    <TableHead className="text-right">İşlemler</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -143,6 +166,25 @@ export default function AdminUyelerPage() {
                       <TableCell className="text-right space-x-2">
                         <Button variant="outline" size="sm" asChild><a href={`tel:${firma.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
                         <Button variant="outline" size="sm" asChild><a href={`sms:${firma.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers}>
+                                    <Trash2 className="h-4 w-4"/>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Firmayı Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Bu işlem, firma profilini ve ilişkili tüm verileri (ilanlar vb.) kalıcı olarak siler. Bu işlem geri alınamaz.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>İptal</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteMember(firma.id, 'firma')}>Sil</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -183,7 +225,7 @@ export default function AdminUyelerPage() {
                     <TableHead>Anlık Şehir</TableHead>
                     <TableHead>Araç Bilgisi</TableHead>
                     <TableHead>Durum</TableHead>
-                    <TableHead className="text-right">İletişim</TableHead>
+                    <TableHead className="text-right">İşlemler</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -201,6 +243,25 @@ export default function AdminUyelerPage() {
                        <TableCell className="text-right space-x-2">
                          <Button variant="outline" size="sm" asChild><a href={`tel:${sofor.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
                         <Button variant="outline" size="sm" asChild><a href={`sms:${sofor.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers}>
+                                    <Trash2 className="h-4 w-4"/>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Şoförü Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                   Bu işlem, şoför profilini ve ilişkili tüm verileri kalıcı olarak siler. Bu işlem geri alınamaz.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>İptal</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteMember(sofor.id, 'sofor')}>Sil</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}

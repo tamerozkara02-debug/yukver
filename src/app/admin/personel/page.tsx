@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { useAdmin, type AdminPermissions } from "@/hooks/use-admin"
 import { Switch } from "@/components/ui/switch"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 import { initializeApp, deleteApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, signOut as signOutTempUser, getAuth } from 'firebase/auth';
@@ -129,7 +130,7 @@ export default function AdminPersonelPage() {
         }
         try {
             await deleteDoc(doc(firestore, 'roles_admin', id));
-            toast({ title: 'Başarılı', description: 'Personel rolü kaldırıldı. Kullanıcının kimlik doğrulaması hala mevcuttur.' });
+            toast({ title: 'Başarılı', description: 'Personel rolü başarıyla kaldırıldı.' });
         } catch (error: any) {
             console.error("Error deleting staff role:", error);
             toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel rolü silinemedi.' });
@@ -375,9 +376,25 @@ export default function AdminPersonelPage() {
                           <Button variant="outline" size="icon" onClick={() => openEditDialog(p)} disabled={!canManage}>
                               <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="destructive" size="icon" onClick={() => handleDeleteStaff(p.id)} disabled={p.id === user?.uid || !canManage}>
-                              <Trash2 className="h-4 w-4"/>
-                          </Button>
+                          <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="icon" disabled={p.id === user?.uid || !canManage}>
+                                    <Trash2 className="h-4 w-4"/>
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                  <AlertDialogTitle>Personel Rolünü Kaldır</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                      Bu işlem, personelin yönetici rolünü ve tüm yetkilerini kaldırır. Ancak, kullanıcının e-posta/şifre ile olan kimlik doğrulaması (login) kaydı silinmez. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?
+                                  </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                  <AlertDialogCancel>İptal</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteStaff(p.id)}>Rolü Kaldır</AlertDialogAction>
+                                  </AlertDialogFooter>
+                              </AlertDialogContent>
+                          </AlertDialog>
                       </TableCell>
                   </TableRow>
                   ))}
