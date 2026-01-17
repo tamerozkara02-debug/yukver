@@ -92,6 +92,17 @@ export default function AdminLayout({
                 </SidebarMenuButton>
             </SidebarMenuItem>
             
+            {adminData?.permissions.canTrackLocations && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
+                  <Link href="/admin/konum-takibi">
+                    <Map />
+                    <span>Konum Takibi</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+
             {adminData?.permissions.canManageStaff && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
@@ -109,14 +120,6 @@ export default function AdminLayout({
                     <Link href="/admin/dashboard">
                       <Briefcase />
                       <span>Eski Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
-                    <Link href="/admin/konum-takibi">
-                      <Map />
-                      <span>Eski Konum Takibi</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
