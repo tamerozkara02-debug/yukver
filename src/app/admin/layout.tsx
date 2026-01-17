@@ -48,11 +48,6 @@ export default function AdminLayout({
     return <>{children}</>;
   }
 
-  // == TEMPORARY: Access control disabled to allow first admin creation ==
-  // The 'isAdmin' check is temporarily removed.
-  // Please create a new admin user with full permissions, then ask me to
-  // re-enable security.
-
   if (isAdminLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -64,8 +59,6 @@ export default function AdminLayout({
     );
   }
 
-  /*
-  // == SECURITY DISABLED - RE-ENABLE AFTER ADMIN CREATION ==
   if (!isAdmin) {
      return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -77,7 +70,6 @@ export default function AdminLayout({
       </div>
     );
   }
-  */
   
 
   return (

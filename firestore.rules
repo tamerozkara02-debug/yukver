@@ -57,8 +57,8 @@ service cloud.firestore {
     match /roles_admin/{userId} {
         allow get: if isOwner(userId);
         allow list: if request.auth != null;
-        // TEMPORARY: Allow any logged-in user to create their own admin document to fix lockout.
-        allow create: if isOwner(userId);
+        // Creation is handled by a secure backend flow. Client-side creation is disallowed.
+        allow create: if false;
         allow delete: if userIsAdmin() && getAdminPermissions().canManageStaff == true;
     }
     
