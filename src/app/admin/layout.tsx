@@ -14,9 +14,9 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Truck, LayoutDashboard, Users, UserCog, LogOut, Map, Loader2, Briefcase } from "lucide-react"
+import { Truck, LayoutDashboard, Users, UserCog, LogOut, Map, Loader2, Briefcase, Shield } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/firebase"
+import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { useAdmin } from "@/hooks/use-admin"
 import { useToast } from "@/hooks/use-toast"
@@ -31,6 +31,7 @@ export default function AdminLayout({
   const pathname = usePathname()
   const router = useRouter();
   const auth = useAuth();
+  const { user } = useUser();
   const { isAdmin, adminData, isLoading: isAdminLoading } = useAdmin();
   const { toast } = useToast();
 
@@ -83,6 +84,16 @@ export default function AdminLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
+             {user?.email === 'tamerozkara02@gmail.com' && (
+               <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/management")}>
+                    <Link href="/admin/management">
+                      <Shield />
+                      <span>Üst Yönetim</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+            )}
             <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/admin/portal")}>
                   <Link href="/admin/portal">

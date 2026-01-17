@@ -103,6 +103,16 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
+        // Super admin check
+        if (user.email === 'tamerozkara02@gmail.com') {
+            toast({
+                title: 'Üst Yönetici Girişi Başarılı',
+                description: 'Özel yönetim paneline yönlendiriliyorsunuz...',
+            });
+            router.push('/admin/management');
+            return; // Stop further execution
+        }
+
         const isRoleCorrect = await checkUserRole(user.uid, initialRole);
 
         if (isRoleCorrect) {
