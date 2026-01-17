@@ -19,19 +19,18 @@ import {
 import { PlusCircle, Trash2, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
 import { collection, doc, deleteDoc, setDoc } from "firebase/firestore"
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { useAdmin } from "@/hooks/use-admin"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-type PromotableUser = {
-  id: string;
-  name: string;
-  type: 'Firma' | 'Şoför';
-}
+import { initializeApp, deleteApp } from 'firebase/app';
+import { createUserWithEmailAndPassword, signOut as signOutTempUser, getAuth } from 'firebase/auth';
+import { firebaseConfig } from '@/firebase/config';
+
 
 export default function AdminPersonelPage() {
     const firestore = useFirestore();
@@ -41,51 +40,40 @@ export default function AdminPersonelPage() {
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
     const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
-    const firmsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'firms') : null, [firestore]);
-    const { data: firms, isLoading: isLoadingFirms } = useCollection(firmsCollection);
-
-    const driversCollection = useMemoFirebase(() => firestore ? collection(firestore, 'drivers') : null, [firestore]);
-    const { data: drivers, isLoading: isLoadingDrivers } = useCollection(driversCollection);
-
-    const promotableUsers = useMemo<PromotableUser[]>(() => {
-        if (!firms || !drivers) return [];
-        
-        const existingStaffIds = new Set(personel?.map(p => p.id) || []);
-
-        const allUsers: PromotableUser[] = [
-            ...firms.map(f => ({ id: f.id, name: `${f.firstName} ${f.lastName}`, type: 'Firma' as const })),
-            ...drivers.map(d => ({ id: d.id, name: `${d.firstName} ${d.lastName}`, type: 'Şoför' as const }))
-        ];
-        
-        return allUsers.filter(u => u.id && !existingStaffIds.has(u.id));
-
-    }, [firms, drivers, personel]);
 
     const handleAddStaff = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        
-        if (!selectedUserId) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen personel rolü atanacak bir kullanıcı seçin.' });
+
+        if (password !== confirmPassword) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Şifreler eşleşmiyor.' });
             return;
         }
 
-        const userToPromote = promotableUsers.find(u => u.id === selectedUserId);
-        if (!userToPromote) {
-             toast({ variant: 'destructive', title: 'Hata', description: 'Seçilen kullanıcı bulunamadı.' });
+        if (password.length < 6) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Şifre en az 6 karakter olmalıdır.' });
             return;
         }
 
         setIsSubmitting(true);
+        const tempAppName = `temp-staff-creation-${Date.now()}`;
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
+        const tempAuth = getAuth(tempApp);
 
         try {
             if (!firestore) throw new Error("Firestore is not available.");
 
-            const adminRoleRef = doc(firestore, 'roles_admin', userToPromote.id);
+            const userCredential = await createUserWithEmailAndPassword(tempAuth, username, password);
+            const newStaffUser = userCredential.user;
+
+            const adminRoleRef = doc(firestore, 'roles_admin', newStaffUser.uid);
             
             const defaultPermissions = {
                 canViewDashboard: true,
@@ -95,19 +83,30 @@ export default function AdminPersonelPage() {
             };
 
             await setDoc(adminRoleRef, {
-                id: userToPromote.id,
-                username: userToPromote.name,
+                id: newStaffUser.uid,
+                username: newStaffUser.email,
                 permissions: defaultPermissions,
             });
 
-            toast({ title: 'Başarılı', description: `${userToPromote.name} adlı kullanıcıya personel rolü atandı.` });
+            toast({ title: 'Başarılı', description: `${newStaffUser.email} adlı personel başarıyla oluşturuldu.` });
+            
             setIsDialogOpen(false);
-            setSelectedUserId(null);
+            setUsername('');
+            setPassword('');
+            setConfirmPassword('');
 
         } catch (error: any) {
-            console.error("Error adding staff role:", error);
-            toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel rolü atanamadı.' });
+            console.error("Error adding staff:", error);
+            let description = 'Personel oluşturulamadı. Lütfen tekrar deneyin.';
+            if (error.code === 'auth/email-already-in-use') {
+                description = 'Bu e-posta adresi zaten kullanımda.';
+            } else if (error.code === 'auth/invalid-email') {
+                description = 'Geçersiz e-posta adresi formatı.';
+            }
+            toast({ variant: 'destructive', title: 'Hata', description });
         } finally {
+            await signOutTempUser(tempAuth).catch(e => console.error("Failed to sign out temp user", e));
+            await deleteApp(tempApp).catch(e => console.error("Failed to delete temp app", e));
             setIsSubmitting(false);
         }
     };
@@ -134,47 +133,64 @@ export default function AdminPersonelPage() {
        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight font-headline">Personel Yönetimi</h1>
-          <p className="text-muted-foreground">Mevcut kullanıcıları personel olarak atayın veya yönetin.</p>
+          <p className="text-muted-foreground">Yeni personel hesapları oluşturun veya mevcutları yönetin.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(isOpen) => {
+            setIsDialogOpen(isOpen);
+            if (!isOpen) {
+                setUsername('');
+                setPassword('');
+                setConfirmPassword('');
+            }
+        }}>
             <DialogTrigger asChild>
-                <Button disabled={!canManage}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Personel Ata</Button>
+                <Button disabled={!canManage}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Personel Oluştur</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                  <form onSubmit={handleAddStaff}>
                 <DialogHeader>
-                    <DialogTitle className="font-headline">Yeni Personel Ata</DialogTitle>
+                    <DialogTitle className="font-headline">Yeni Personel Oluştur</DialogTitle>
                     <DialogDescription>
-                       Sistemde kayıtlı bir firmayı veya şoförü seçerek onlara personel yetkileri verin.
+                       Yeni personel için giriş bilgilerini oluşturun. Bu işlem hem bir kullanıcı hesabı hem de personel rolü yaratacaktır.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="user-select">Kullanıcı</Label>
-                        <Select onValueChange={setSelectedUserId} value={selectedUserId || ''}>
-                            <SelectTrigger id="user-select">
-                                <SelectValue placeholder="Personel yapılacak kullanıcıyı seçin..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {isLoadingFirms || isLoadingDrivers ? (
-                                    <SelectItem value="loading" disabled>Yükleniyor...</SelectItem>
-                                ) : promotableUsers.length > 0 ? (
-                                    promotableUsers.map(u => (
-                                        <SelectItem key={u.id} value={u.id}>
-                                            {u.name} ({u.type})
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    <SelectItem value="none" disabled>Atanacak kullanıcı bulunamadı.</SelectItem>
-                                )}
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="username">Email</Label>
+                        <Input 
+                            id="username" 
+                            type="email" 
+                            value={username} 
+                            onChange={(e) => setUsername(e.target.value)} 
+                            placeholder="personel@sirket.com" 
+                            required 
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="password">Şifre</Label>
+                        <Input 
+                            id="password" 
+                            type="password" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
+                            required 
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">Şifre (Tekrar)</Label>
+                        <Input 
+                            id="confirmPassword" 
+                            type="password" 
+                            value={confirmPassword} 
+                            onChange={(e) => setConfirmPassword(e.target.value)} 
+                            required 
+                        />
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button type="submit" disabled={isSubmitting || !selectedUserId}>
+                    <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isSubmitting ? 'Atanıyor...' : 'Personel Olarak Ata'}
+                        {isSubmitting ? 'Oluşturuluyor...' : 'Personel Oluştur'}
                     </Button>
                 </DialogFooter>
                 </form>
