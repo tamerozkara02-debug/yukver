@@ -1,11 +1,12 @@
 'use client';
 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Building, Truck, Users, Briefcase } from "lucide-react";
+import { Building, Truck, Users, Briefcase, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser, useFirestore } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 
 const stats = [
@@ -21,40 +22,68 @@ export default function AdminDashboardPage() {
   const { toast } = useToast();
 
   const handleMakeAdmin = async () => {
-    if (user && firestore) {
-      try {
-        const adminRef = doc(firestore, 'roles_admin', user.uid);
-        await setDoc(adminRef, {
-            id: user.uid,
-            username: user.email,
-            permissions: {
-                canViewDashboard: true,
-                canTrackLocations: true,
-                canManageMembers: true,
-                canManageStaff: true
-            }
-        });
-        toast({
-          title: "Yetkilendirme Başarılı!",
-          description: "Mevcut hesabınız tam yönetici olarak ayarlandı. Değişikliklerin yansıması için sayfayı yenileyin veya çıkış yapıp tekrar girin."
-        });
-      } catch (error: any) {
-        console.error("Make admin error:", error);
+    if (!user || !firestore) {
         toast({
           variant: "destructive",
           title: "Hata",
-          description: "Yönetici atama işlemi başarısız oldu: " + error.message,
+          description: "Kullanıcı bilgileri veya veritabanı bağlantısı hazır değil. Lütfen sayfayı yenileyip tekrar deneyin."
         });
-      }
-    } else {
-        toast({
-          variant: "destructive",
-          title: "Hata",
-          description: "Kullanıcı bilgileri bulunamadı. Lütfen giriş yaptığınızdan emin olun."
-        });
+        return;
+    }
+    
+    try {
+      const adminRef = doc(firestore, 'roles_admin', user.uid);
+      await setDoc(adminRef, {
+          id: user.uid,
+          username: user.email,
+          permissions: {
+              canViewDashboard: true,
+              canTrackLocations: true,
+              canManageMembers: true,
+              canManageStaff: true
+          }
+      });
+      toast({
+        title: "Yetkilendirme Başarılı!",
+        description: "Mevcut hesabınız tam yönetici olarak ayarlandı. Değişikliklerin yansıması için çıkış yapıp tekrar girmeniz önerilir."
+      });
+    } catch (error: any) {
+      console.error("Make admin error:", error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Yönetici atama işlemi başarısız oldu: " + error.message,
+      });
     }
   }
 
+  const renderAdminButton = () => {
+    if (isUserLoading) {
+      return (
+        <div className="flex items-center space-x-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Kullanıcı durumu kontrol ediliyor...</span>
+        </div>
+      );
+    }
+
+    if (!user) {
+      return (
+        <div className="text-center">
+            <p className="text-destructive mb-4">Bu işlemi yapmak için giriş yapmış olmalısınız.</p>
+            <Button asChild>
+                <Link href="/admin/giris">Giriş Sayfasına Git</Link>
+            </Button>
+        </div>
+      );
+    }
+
+    return (
+      <Button onClick={handleMakeAdmin}>
+        Mevcut Hesabımı Yönetici Yap
+      </Button>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -66,9 +95,7 @@ export default function AdminDashboardPage() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <Button onClick={handleMakeAdmin} disabled={isUserLoading}>
-                  {isUserLoading ? "Kullanıcı doğrulanıyor..." : "Mevcut Hesabımı Yönetici Yap"}
-                </Button>
+                {renderAdminButton()}
             </CardContent>
         </Card>
         <div>
