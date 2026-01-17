@@ -9,7 +9,36 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
-import { initializeApp, getApps } from 'firebase-admin/app';
+import { initializeApp, getApps, App } from 'firebase-admin/app';
+
+//-/////////////////////////////////////////////////////////////////
+// Helper: Firebase Admin SDK Initialization
+//-/////////////////////////////////////////////////////////////////
+
+/**
+ * Ensures the Firebase Admin SDK is initialized, returning the initialized app.
+ * This is a critical step for all server-side Firebase operations.
+ * It centralizes the initialization logic to prevent duplicate initializations and handle errors gracefully.
+ * @returns {App} The initialized Firebase Admin App instance.
+ * @throws {Error} If initialization fails due to configuration issues.
+ */
+function _ensureFirebaseAdminInitialized(): App {
+    // If the SDK is already initialized, return the existing app instance.
+    if (getApps().length > 0) {
+        return getApps()[0];
+    }
+    // If not initialized, attempt to initialize it.
+    // This relies on Google Application Default Credentials (ADC) in the server environment.
+    try {
+        return initializeApp();
+    } catch (initError: any) {
+        // Log the detailed technical error on the server for debugging.
+        console.error("CRITICAL: Firebase Admin SDK initialization failed.", initError);
+        // Throw a user-friendly error to be displayed on the client-side.
+        throw new Error("Sunucu yapılandırma hatası: Firebase Admin SDK başlatılamadı. Lütfen sistem yöneticisiyle iletişime geçin.");
+    }
+}
+
 
 //-/////////////////////////////////////////////////////////////////
 // Create Staff Flow
@@ -47,37 +76,34 @@ const createStaffFlow = ai.defineFlow(
   },
   async ({ email, password, permissions }) => {
     try {
-      if (getApps().length === 0) {
-        // Explicitly catch initialization errors to provide a better message.
-        try {
-          initializeApp();
-        } catch (initError: any) {
-           console.error("Firebase Admin SDK initialization error:", initError);
-           throw new Error("Sunucu yapılandırma hatası: Firebase Admin SDK başlatılamadı. Lütfen yöneticiyle iletişime geçin.");
-        }
-      }
+      // Ensure Firebase Admin is ready before proceeding.
+      _ensureFirebaseAdminInitialized();
 
+      // 1. Create the user in Firebase Authentication.
       const userRecord = await getAuth().createUser({
         email,
         password,
       });
 
+      // 2. Create the corresponding admin role document in Firestore.
       const db = getFirestore();
       const adminRoleRef = db.collection('roles_admin').doc(userRecord.uid);
       await adminRoleRef.set({
         id: userRecord.uid,
         username: userRecord.email,
-        permissions: permissions,
+        permissions: permissions, // Save the permissions object.
       });
 
+      // 3. Return the new user's basic info on success.
       return {
         uid: userRecord.uid,
         email: userRecord.email!,
       };
     } catch (error: any) {
+      // Log the full error on the server for detailed debugging.
       console.error("Error in createStaffFlow:", error);
 
-      // Pass along specific, user-friendly messages from our code or underlying services.
+      // Provide specific, user-friendly error messages for common issues.
       if (error.code === 'auth/email-already-exists') {
         throw new Error('Bu e-posta adresi zaten kullanımda.');
       }
@@ -85,7 +111,7 @@ const createStaffFlow = ai.defineFlow(
         throw new Error('Şifre en az 6 karakter olmalıdır.');
       }
       
-      // If it's one of our custom errors (like the init error), or any other error, re-throw its message.
+      // For any other error (including initialization), re-throw its message.
       throw new Error(error.message || 'Personel oluşturulurken bilinmeyen bir sunucu hatası oluştu.');
     }
   }
@@ -120,24 +146,25 @@ const deleteStaffFlow = ai.defineFlow(
   },
   async ({ userId }) => {
     try {
-        if (getApps().length === 0) {
-            try {
-              initializeApp();
-            } catch (initError: any) {
-               console.error("Firebase Admin SDK initialization error:", initError);
-               throw new Error("Sunucu yapılandırma hatası: Firebase Admin SDK başlatılamadı. Lütfen yöneticiyle iletişime geçin.");
-            }
-        }
+        // Ensure Firebase Admin is ready.
+        _ensureFirebaseAdminInitialized();
+        
+        // 1. Delete the user from Firebase Authentication.
         await getAuth().deleteUser(userId);
+
+        // 2. Delete the user's role document from Firestore.
         const db = getFirestore();
         await db.collection('roles_admin').doc(userId).delete();
+
         return { success: true, message: `Personel başarıyla silindi.` };
+
     } catch (error: any) {
         console.error(`Failed to delete user ${userId}:`, error);
 
+        // Gracefully handle cases where the user is already deleted from Auth.
         if (error.code === 'auth/user-not-found') {
             try {
-                // If the user isn't in Auth, still try to clean up their Firestore role document.
+                // Still try to clean up their Firestore role document.
                 const db = getFirestore();
                 await db.collection('roles_admin').doc(userId).delete();
                 return { success: true, message: `Kullanıcı kimlik doğrulamada bulunamadı, ancak ilişkili rolü veritabanından temizlendi.` };
