@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth, useFirestore } from '@/firebase';
 import {
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -58,6 +59,38 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
   const [isLoading, setIsLoading] = useState(false);
 
   const details = roleDetails[initialRole];
+  
+  const handlePasswordReset = async () => {
+    if (!email) {
+      toast({
+        variant: 'destructive',
+        title: 'E-posta Gerekli',
+        description: 'Şifre sıfırlama bağlantısı göndermek için lütfen e-posta adresinizi girin.',
+      });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast({
+        title: 'E-posta Gönderildi',
+        description: 'Şifre sıfırlama talimatları için lütfen e-posta kutunuzu kontrol edin.',
+      });
+    } catch (error: any) {
+      let description = 'Şifre sıfırlama e-postası gönderilemedi.';
+      if (error.code === 'auth/user-not-found') {
+        description = 'Bu e-posta adresi ile kayıtlı bir kullanıcı bulunamadı.';
+      }
+      toast({
+        variant: 'destructive',
+        title: 'Hata',
+        description,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   const checkUserRole = async (userId: string, expectedRole: Role): Promise<boolean> => {
     if (!firestore) return false;
@@ -218,12 +251,17 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             />
             </div>
             <div className="space-y-2">
-            <Label htmlFor={`${initialRole}-password`}>Şifre</Label>
-            <Input id={`${initialRole}-password`} type="password" required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-            />
+                <div className="flex items-center justify-between">
+                    <Label htmlFor={`${initialRole}-password`}>Şifre</Label>
+                     <Button variant="link" type="button" onClick={handlePasswordReset} disabled={isLoading || !email} className="px-0 text-xs h-auto">
+                        Şifremi Unuttum
+                    </Button>
+                </div>
+                <Input id={`${initialRole}-password`} type="password" required 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLoading}
+                />
             </div>
             <Button
             type="submit"
