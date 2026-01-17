@@ -52,13 +52,11 @@ service cloud.firestore {
       allow read, update, delete: if userIsAdmin();
     }
 
-    // ROLES_ADMIN: Users can read their own admin status. Any authenticated user can see the list of admins.
-    // Backend flows handle creation/deletion, but this rule provides an extra layer of security.
+    // ROLES_ADMIN: Users can read their own admin status. An admin with canManageStaff can manage roles.
     match /roles_admin/{userId} {
         allow get: if isOwner(userId);
         allow list: if request.auth != null;
-        // Creation is handled by a secure backend flow. Client-side creation is disallowed.
-        allow create: if false;
+        allow create: if userIsAdmin() && getAdminPermissions().canManageStaff == true;
         allow delete: if userIsAdmin() && getAdminPermissions().canManageStaff == true;
     }
     
