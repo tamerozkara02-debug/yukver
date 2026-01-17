@@ -76,12 +76,9 @@ export default function AdminPersonelPage() {
             return;
         }
         try {
+            // The flow now returns a success message or throws an error, simplifying client-side logic.
             const result = await deleteStaffUser({ userId: id });
-            if (result.success) {
-                toast({ title: 'Başarılı', description: result.message });
-            } else {
-                 toast({ variant: 'destructive', title: 'Hata', description: result.message });
-            }
+            toast({ title: 'Başarılı', description: result.message });
         } catch (error: any) {
             console.error("Error deleting staff:", error);
             toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel silinemedi.' });

@@ -6,7 +6,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeApp, getApps } from 'firebase-admin/app';
@@ -46,12 +46,13 @@ const createStaffFlow = ai.defineFlow(
     outputSchema: CreateStaffOutputSchema,
   },
   async ({ email, password, permissions }) => {
-    // Initialize Firebase Admin SDK if not already initialized
-    if (getApps().length === 0) {
-      initializeApp();
-    }
-
     try {
+      // Initialize Firebase Admin SDK if not already initialized.
+      // This is the critical change: move initialization inside the try block.
+      if (getApps().length === 0) {
+        initializeApp();
+      }
+
       // 1. Create user in Firebase Authentication
       const userRecord = await getAuth().createUser({
         email,
@@ -72,8 +73,10 @@ const createStaffFlow = ai.defineFlow(
         email: userRecord.email!,
       };
     } catch (error: any) {
+      // Log the detailed error on the server for debugging
       console.error("Error in createStaffFlow:", error);
 
+      // Provide clear, user-friendly error messages to the client
       if (error.code === 'auth/email-already-exists') {
         throw new Error('Bu e-posta adresi zaten kullanımda.');
       }
@@ -81,7 +84,8 @@ const createStaffFlow = ai.defineFlow(
         throw new Error('Şifre en az 6 karakter olmalıdır.');
       }
       
-      throw new Error(`Personel oluşturulamadı: Sunucu tarafında bir hata oluştu. (${error.message})`);
+      // A generic but more helpful message for other errors (like initialization failure)
+      throw new Error(`Personel oluşturulamadı: Sunucu tarafında bir hata oluştu. Lütfen sistem yöneticisiyle iletişime geçin.`);
     }
   }
 );
@@ -114,36 +118,35 @@ const deleteStaffFlow = ai.defineFlow(
     outputSchema: DeleteStaffOutputSchema,
   },
   async ({ userId }) => {
-    // Initialize Firebase Admin SDK if not already initialized
-    if (getApps().length === 0) {
-      initializeApp();
-    }
-
     try {
-      // 1. Delete user from Firebase Authentication
-      await getAuth().deleteUser(userId);
-
-      // 2. Delete user's role document from Firestore
-      const db = getFirestore();
-      const userRoleDocRef = db.collection('roles_admin').doc(userId);
-      await userRoleDocRef.delete();
-      
-      return { success: true, message: `Successfully deleted user ${userId} from Auth and Firestore.` };
-
-    } catch (error: any) {
-      if (error.code === 'auth/user-not-found') {
-        // If user is not in Auth, try to delete from Firestore just in case.
-        try {
-            const db = getFirestore();
-            const userRoleDocRef = db.collection('roles_admin').doc(userId);
-            await userRoleDocRef.delete();
-            return { success: true, message: `User ${userId} was not in Auth, but was removed from Firestore roles.`};
-        } catch (dbError) {
-            return { success: true, message: `User with UID ${userId} was not found in Firebase Auth.`};
+        if (getApps().length === 0) {
+            initializeApp();
         }
-      }
-      console.error(`Failed to delete user ${userId}:`, error);
-      throw new Error(`Failed to delete staff user: ${error.message}`);
+        await getAuth().deleteUser(userId);
+        const db = getFirestore();
+        await db.collection('roles_admin').doc(userId).delete();
+        return { success: true, message: `Personel başarıyla silindi.` };
+    } catch (error: any) {
+        console.error(`Failed to delete user ${userId}:`, error);
+
+        if (error.code === 'auth/user-not-found') {
+            // User doesn't exist in Auth, but their role might still be in Firestore.
+            // Let's try to clean up Firestore.
+            try {
+                const db = getFirestore();
+                if (getApps().length === 0) {
+                    initializeApp();
+                }
+                await db.collection('roles_admin').doc(userId).delete();
+                // We can consider this a "success" in terms of cleanup.
+                return { success: true, message: `Kullanıcı kimlik doğrulamada bulunamadı, ancak rolü veritabanından temizlendi.` };
+            } catch (dbError) {
+                console.error(`Failed to delete orphaned role for user ${userId}:`, dbError);
+                throw new Error(`Kullanıcı kimlik doğrulamada bulunamadı ve veritabanı rolü de silinemedi.`);
+            }
+        }
+        // For all other errors (including initialization), throw a generic error.
+        throw new Error(`Personel silinirken bir sunucu hatası oluştu.`);
     }
   }
 );
