@@ -16,7 +16,7 @@ const stats = [
 ];
 
 export default function AdminDashboardPage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -66,7 +66,9 @@ export default function AdminDashboardPage() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
-                <Button onClick={handleMakeAdmin}>Mevcut Hesabımı Yönetici Yap</Button>
+                <Button onClick={handleMakeAdmin} disabled={isUserLoading}>
+                  {isUserLoading ? "Kullanıcı doğrulanıyor..." : "Mevcut Hesabımı Yönetici Yap"}
+                </Button>
             </CardContent>
         </Card>
         <div>
