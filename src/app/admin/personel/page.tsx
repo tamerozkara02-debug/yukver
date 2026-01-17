@@ -62,11 +62,7 @@ export default function AdminPersonelPage() {
             
         } catch (error: any) {
             console.error("Error adding staff:", error);
-            if (error.code === 'auth/email-already-exists') {
-                toast({ variant: 'destructive', title: 'Hata', description: 'Bu e-posta adresi zaten kullanımda.' });
-            } else {
-                toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel eklenemedi.' });
-            }
+            toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel eklenemedi.' });
         }
     };
 
