@@ -253,7 +253,7 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <Label htmlFor={`${initialRole}-password`}>Şifre</Label>
-                     <Button variant="link" type="button" onClick={handlePasswordReset} disabled={isLoading || !email} className="px-0 text-xs h-auto">
+                     <Button variant="link" type="button" onClick={handlePasswordReset} disabled={isLoading || !email} className="px-0 text-xs h-auto text-muted-foreground">
                         Şifremi Unuttum
                     </Button>
                 </div>
