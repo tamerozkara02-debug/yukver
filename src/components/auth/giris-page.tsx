@@ -18,7 +18,7 @@ import {
 } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 type Role = 'firma' | 'sofor' | 'admin';
 
@@ -112,6 +112,41 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             });
             router.push(details.dashboard);
         } else {
+            // Self-healing for admin accounts with missing roles.
+            if (initialRole === 'admin' && firestore) {
+                toast({
+                    title: 'Hesap Yapılandırılıyor',
+                    description: 'Eksik personel rolü algılandı ve şimdi oluşturuluyor. Lütfen bekleyin...',
+                });
+                try {
+                    const adminRef = doc(firestore, 'roles_admin', user.uid);
+                    await setDoc(adminRef, {
+                        id: user.uid,
+                        username: user.email,
+                        permissions: { // Give full permissions to fix the lockout
+                            canViewDashboard: true,
+                            canTrackLocations: true,
+                            canManageMembers: true,
+                            canManageStaff: true
+                        }
+                    });
+                    toast({
+                        title: 'Başarılı',
+                        description: 'Personel rolü başarıyla oluşturuldu. Yönlendiriliyorsunuz...',
+                    });
+                    router.push(details.dashboard);
+                } catch (dbError) {
+                    console.error("Failed to create admin role doc:", dbError);
+                    await auth.signOut();
+                    toast({
+                        variant: 'destructive',
+                        title: 'Yapılandırma Başarısız',
+                        description: 'Personel rolü oluşturulamadı. Veritabanı yazma yetkisi sorunu olabilir.',
+                    });
+                }
+                return; // Stop execution here after attempting self-heal
+            }
+
              await auth.signOut();
              
              let attemptedRoleName = details.name;
