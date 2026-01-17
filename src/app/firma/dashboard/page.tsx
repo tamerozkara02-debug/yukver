@@ -33,6 +33,7 @@ import {
   Save,
   Star,
   MessageSquare,
+  AlertCircle,
 } from 'lucide-react';
 import {
   useAuth,
@@ -121,6 +122,7 @@ export default function FirmaDashboard() {
     taxOffice: '',
     taxNumber: '',
   });
+  const [profileCompletionAlert, setProfileCompletionAlert] = useState(false);
 
   // State for review form
   const [allDrivers, setAllDrivers] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
@@ -161,6 +163,13 @@ export default function FirmaDashboard() {
         taxOffice: firmData.taxOffice || '',
         taxNumber: firmData.taxNumber || '',
       });
+      
+      const isProfileIncomplete = !firmData.phoneNumber || !firmData.city || !firmData.district || !firmData.taxOffice || !firmData.taxNumber;
+      if (isProfileIncomplete) {
+          setIsEditDialogOpen(true);
+          setProfileCompletionAlert(true);
+      }
+
     }
   }, [firmData]);
 
@@ -171,6 +180,17 @@ export default function FirmaDashboard() {
 
   const handleProfileUpdate = async () => {
     if (!firmDocRef) return;
+    
+    // Check for completeness
+    if (!editData.phoneNumber || !editData.city || !editData.district || !editData.taxOffice || !editData.taxNumber) {
+        toast({
+            variant: 'destructive',
+            title: 'Eksik Bilgi',
+            description: 'Lütfen tüm profil alanlarını doldurun.',
+        });
+        return;
+    }
+
     try {
       await updateDoc(firmDocRef, editData);
       toast({
@@ -178,6 +198,7 @@ export default function FirmaDashboard() {
         description: 'Profil bilgileriniz güncellendi.',
       });
       setIsEditDialogOpen(false);
+      setProfileCompletionAlert(false);
     } catch (error) {
       console.error('Profile update error:', error);
       toast({
@@ -322,6 +343,14 @@ export default function FirmaDashboard() {
     await signOut(auth);
     router.push('/giris');
   };
+  
+  const handleDialogClose = (open: boolean) => {
+      if (profileCompletionAlert && !open) {
+          toast({ variant: 'destructive', title: 'Zorunlu Alanlar', description: 'Lütfen devam etmeden önce profilinizi tamamlayın.' });
+          return;
+      }
+      setIsEditDialogOpen(open);
+  }
 
   if (isUserLoading || isFirmLoading) {
     return <div>Yükleniyor...</div>;
@@ -375,7 +404,7 @@ export default function FirmaDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <Dialog open={isEditDialogOpen} onOpenChange={handleDialogClose}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <Edit className="mr-2 h-4 w-4" /> Profili Düzenle
@@ -385,8 +414,7 @@ export default function FirmaDashboard() {
                 <DialogHeader>
                   <DialogTitle>Profil Bilgilerini Düzenle</DialogTitle>
                   <DialogDescription>
-                    Firma bilgilerinizi güncelleyin. Değişiklikler anında
-                    yansıtılacaktır.
+                    {profileCompletionAlert ? 'Lütfen platformu kullanmaya başlamadan önce tüm bilgilerinizi eksiksiz doldurun.' : 'Firma bilgilerinizi güncelleyin. Değişiklikler anında yansıtılacaktır.'}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -476,6 +504,17 @@ export default function FirmaDashboard() {
       </header>
 
       <main className="container mx-auto p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {profileCompletionAlert && (
+             <div className="lg:col-span-3">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Profilinizi Tamamlayın!</AlertTitle>
+                    <AlertDescription>
+                        Platformu kullanmaya başlamadan önce lütfen yukarıdaki "Profili Düzenle" butonu ile tüm profil bilgilerinizi eksiksiz doldurun.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        )}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>

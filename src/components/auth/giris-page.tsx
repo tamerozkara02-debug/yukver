@@ -16,6 +16,8 @@ import { useAuth, useFirestore } from '@/firebase';
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -46,6 +48,15 @@ const roleDetails = {
         dashboard: '/admin/portal',
     }
 }
+
+const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg role="img" viewBox="0 0 24 24" {...props}>
+        <path
+        fill="currentColor"
+        d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.05 1.05-2.58 2.03-4.8 2.03-3.87 0-7-3.13-7-7s3.13-7 7-7c2.25 0 3.67.92 4.5 1.75l2.5-2.5C18.13 1.9 15.62 0 12.48 0 5.88 0 0 5.88 0 12.48s5.88 12.48 12.48 12.48c7.1 0 12.03-4.92 12.03-12.03 0-.78-.08-1.56-.22-2.32H12.48z"
+        />
+    </svg>
+);
 
 
 export function GirisPage({ initialRole }: { initialRole: Role}) {
@@ -228,6 +239,102 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
         setIsLoading(false);
     }
   };
+  
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+        const userCredential = await signInWithPopup(auth, provider);
+        const user = userCredential.user;
+
+        // Super admin check
+        if (user.email === 'tamerozkara02@gmail.com') {
+            toast({
+                title: 'Üst Yönetici Girişi Başarılı',
+                description: 'Özel yönetim paneline yönlendiriliyorsunuz...',
+            });
+            router.push('/admin/management');
+            return;
+        }
+
+        const hasCorrectRole = await checkUserRole(user.uid, initialRole);
+
+        if (hasCorrectRole) {
+            toast({ title: 'Başarılı', description: 'Giriş yapıldı, yönlendiriliyorsunuz...' });
+            router.push(details.dashboard);
+            return;
+        }
+
+        // Check if user exists with another role
+        const otherRoles = (['firma', 'sofor', 'admin'] as Role[]).filter(r => r !== initialRole);
+        for (const role of otherRoles) {
+            if (await checkUserRole(user.uid, role)) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Hatalı Rol',
+                    description: `Bu hesap bir ${roleDetails[role].name} hesabıdır. Lütfen doğru sekmeden giriş yapın.`
+                });
+                setIsLoading(false);
+                return;
+            }
+        }
+        
+        // If we reach here, user is new. Create their profile.
+        toast({ title: 'Hoş geldiniz!', description: `${details.name} profiliniz oluşturuluyor...` });
+
+        const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ['', ''];
+        const lastName = lastNameParts.join(' ');
+        
+        let profileData: any;
+        let collectionName: string = '';
+
+        if (initialRole === 'firma') {
+            collectionName = 'firms';
+            profileData = {
+                id: user.uid,
+                firstName: firstName || '',
+                lastName: lastName || '',
+                profilePicture: user.photoURL || '',
+                phoneNumber: user.phoneNumber || '',
+                city: '',
+                district: '',
+                taxOffice: '',
+                taxNumber: ''
+            };
+        } else if (initialRole === 'sofor') {
+            collectionName = 'drivers';
+            profileData = {
+                id: user.uid,
+                firstName: firstName || '',
+                lastName: lastName || '',
+                profilePicture: user.photoURL || '',
+                phoneNumber: user.phoneNumber || '',
+                vehicleType: '',
+                vehiclePlate: ''
+            };
+        } else {
+             // This case should not be hit from the main login page for Google sign-in
+             toast({ variant: 'destructive', title: 'Hata', description: 'Geçersiz rol.' });
+             setIsLoading(false);
+             return;
+        }
+        
+        await setDoc(doc(firestore, collectionName, user.uid), profileData);
+        toast({ title: 'Profil Oluşturuldu', description: 'Panele yönlendiriliyorsunuz.' });
+        router.push(details.dashboard);
+
+    } catch (error: any) {
+        console.error("Google Sign-In Error:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Giriş Başarısız',
+            description: 'Google ile giriş sırasında bir hata oluştu.',
+        });
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
 
   return (
     <Card>
@@ -238,6 +345,20 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isLoading}>
+                <GoogleIcon className="mr-2 h-4 w-4" />
+                Google ile Giriş Yap
+            </Button>
+            <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">
+                    Veya e-posta ile
+                    </span>
+                </div>
+            </div>
             <div className="space-y-2">
             <Label htmlFor={`${initialRole}-email`}>Email</Label>
             <Input

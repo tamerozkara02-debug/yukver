@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { placeholderImages } from '@/lib/placeholder-images';
-import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera, Save, MessageSquare, Star } from 'lucide-react';
+import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera, Save, MessageSquare, Star, AlertCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, serverTimestamp, updateDoc, collection, addDoc, getDocs } from 'firebase/firestore';
@@ -55,6 +55,7 @@ export default function SoforDashboard() {
     vehicleType: '',
     vehiclePlate: '',
   });
+  const [profileCompletionAlert, setProfileCompletionAlert] = useState(false);
 
   // State for review form
   const [allFirms, setAllFirms] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
@@ -99,6 +100,12 @@ export default function SoforDashboard() {
       if (driverData.latitude && driverData.longitude) {
           setIsTracking(true);
       }
+      
+      const isProfileIncomplete = !driverData.phoneNumber || !driverData.vehicleType || !driverData.vehiclePlate;
+      if (isProfileIncomplete) {
+        setIsEditDialogOpen(true);
+        setProfileCompletionAlert(true);
+      }
     }
   }, [driverData]);
 
@@ -113,6 +120,16 @@ export default function SoforDashboard() {
 
   const handleProfileUpdate = async () => {
     if (!driverDocRef) return;
+
+    if (!editData.phoneNumber || !editData.vehicleType || !editData.vehiclePlate) {
+        toast({
+            variant: 'destructive',
+            title: 'Eksik Bilgi',
+            description: 'Lütfen telefon numarası, araç tipi ve plaka alanlarını doldurun.',
+        });
+        return;
+    }
+
     try {
       await updateDoc(driverDocRef, editData);
       toast({
@@ -120,6 +137,7 @@ export default function SoforDashboard() {
         description: 'Profil bilgileriniz güncellendi.',
       });
       setIsEditDialogOpen(false);
+      setProfileCompletionAlert(false);
     } catch (error) {
       console.error('Profil güncellenirken hata:', error);
       toast({
@@ -318,6 +336,14 @@ export default function SoforDashboard() {
     await signOut(auth);
     router.push('/giris');
   };
+  
+  const handleDialogClose = (open: boolean) => {
+      if (profileCompletionAlert && !open) {
+          toast({ variant: 'destructive', title: 'Zorunlu Alanlar', description: 'Lütfen devam etmeden önce profilinizi tamamlayın.' });
+          return;
+      }
+      setIsEditDialogOpen(open);
+  }
 
   if (isUserLoading || isDriverLoading) {
     return <div>Yükleniyor...</div>;
@@ -375,6 +401,17 @@ export default function SoforDashboard() {
       </header>
 
       <main className="container mx-auto p-4 sm:p-6 lg:p-8 grid md:grid-cols-3 gap-8">
+        {profileCompletionAlert && (
+             <div className="md:col-span-3">
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Profilinizi Tamamlayın!</AlertTitle>
+                    <AlertDescription>
+                        Platformu kullanmaya başlamadan önce lütfen araç ve iletişim bilgilerinizi eksiksiz doldurun.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        )}
         <div className="md:col-span-2 space-y-8">
           <Card>
             <CardHeader>
@@ -490,7 +527,7 @@ export default function SoforDashboard() {
                 <CardTitle className="font-headline flex items-center gap-2">
                   <UserCircle className="w-6 h-6 text-primary" /> Profil Bilgilerim
                 </CardTitle>
-                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <Dialog open={isEditDialogOpen} onOpenChange={handleDialogClose}>
                   <DialogTrigger asChild>
                      <Button variant="ghost" size="icon">
                         <Edit className="w-5 h-5"/>
@@ -500,7 +537,7 @@ export default function SoforDashboard() {
                     <DialogHeader>
                         <DialogTitle>Profil Bilgilerini Düzenle</DialogTitle>
                         <DialogDescription>
-                            Değişiklikleri yaptıktan sonra kaydet butonuna tıklayın.
+                            {profileCompletionAlert ? 'Lütfen platformu kullanmaya başlamadan önce tüm bilgilerinizi eksiksiz doldurun.' : 'Değişiklikleri yaptıktan sonra kaydet butonuna tıklayın.'}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
