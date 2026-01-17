@@ -18,44 +18,19 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Edit, PlusCircle, Trash2, Phone, MessageCircle, Truck, Building } from "lucide-react"
+import { Phone, MessageCircle, Truck, Building } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { collection, doc, deleteDoc } from "firebase/firestore"
-import { useToast } from "@/hooks/use-toast"
+import { collection } from "firebase/firestore"
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
-  const { toast } = useToast();
 
   const firmsCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
   const driversCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
 
   const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
   const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
-
-  const handleDeleteFirm = async (id: string) => {
-    if (!firestore) return;
-    try {
-      await deleteDoc(doc(firestore, 'firms', id));
-      // Also need to delete user from Auth, but that requires admin privileges and a backend function.
-      // For now, just show a success message for the DB deletion.
-      toast({ title: 'Başarılı', description: 'Firma veritabanından silindi. (Authentication kaydı duruyor)' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Hata', description: 'Firma silinemedi.' });
-    }
-  };
-
-  const handleDeleteDriver = async (id: string) => {
-    if (!firestore) return;
-    try {
-      await deleteDoc(doc(firestore, 'drivers', id));
-       // Also need to delete user from Auth, but that requires admin privileges and a backend function.
-      toast({ title: 'Başarılı', description: 'Şoför veritabanından silindi. (Authentication kaydı duruyor)' });
-    } catch (error) {
-       toast({ variant: 'destructive', title: 'Hata', description: 'Şoför silinemedi.' });
-    }
-  };
 
   const isLoading = isUserLoading || isLoadingFirms || isLoadingDrivers;
 
