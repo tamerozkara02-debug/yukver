@@ -11,12 +11,15 @@ import { useAdmin } from '@/hooks/use-admin';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { turkishCities } from '@/lib/cities';
+import { Button } from '@/components/ui/button';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
   const { adminData, isLoading: isAdminLoading } = useAdmin();
 
   const [selectedCity, setSelectedCity] = useState<string>('all');
+  const [appliedCity, setAppliedCity] = useState<string>('all');
 
   // Query for all loads using a collection group query
   const loadsQuery = useMemoFirebase(
@@ -56,32 +59,16 @@ export default function AdminDashboardPage() {
     const firm = firms?.find(f => f.id === firmId);
     return firm ? `${firm.firstName} ${firm.lastName}` : 'Bilinmeyen Firma';
   }
-  
-  const allCities = useMemo(() => {
-    const citySet = new Set<string>();
-    if (loads) {
-      loads.forEach(load => {
-        if (load.originCity) citySet.add(load.originCity);
-        if (load.destinationCity) citySet.add(load.destinationCity);
-      });
-    }
-    if (drivers) {
-        drivers.forEach(driver => {
-            if (driver.currentCity) citySet.add(driver.currentCity);
-        });
-    }
-    return ['all', ...Array.from(citySet).sort()];
-  }, [loads, drivers]);
 
   const filteredLoads = useMemo(() => {
-    if (selectedCity === 'all') return loads;
-    return loads?.filter(load => load.originCity === selectedCity || load.destinationCity === selectedCity) || [];
-  }, [loads, selectedCity]);
+    if (appliedCity === 'all') return loads;
+    return loads?.filter(load => load.originCity === appliedCity || load.destinationCity === appliedCity) || [];
+  }, [loads, appliedCity]);
 
   const filteredAvailableDrivers = useMemo(() => {
-    if (selectedCity === 'all') return availableDrivers;
-    return availableDrivers?.filter(driver => driver.currentCity === selectedCity) || [];
-  }, [availableDrivers, selectedCity]);
+    if (appliedCity === 'all') return availableDrivers;
+    return availableDrivers?.filter(driver => driver.currentCity === appliedCity) || [];
+  }, [availableDrivers, appliedCity]);
 
   const isFullAdmin = adminData?.permissions?.canViewDashboard;
 
@@ -137,13 +124,15 @@ export default function AdminDashboardPage() {
                     <SelectValue placeholder="Şehir seçin..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {allCities.map(city => (
+                    <SelectItem value="all">Tüm Şehirler</SelectItem>
+                    {turkishCities.map(city => (
                       <SelectItem key={city} value={city}>
-                        {city === 'all' ? 'Tüm Şehirler' : city}
+                        {city}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <Button onClick={() => setAppliedCity(selectedCity)}>Filtrele</Button>
             </div>
             <div className="grid gap-6 lg:grid-cols-2">
                 <Card className="lg:col-span-1">
@@ -176,7 +165,7 @@ export default function AdminDashboardPage() {
                         ))}
                         {!isLoading && (!filteredLoads || filteredLoads.length === 0) && (
                             <TableRow><TableCell colSpan={4} className="h-24 text-center">
-                                {selectedCity === 'all' ? 'Aktif yük ilanı bulunmuyor.' : 'Bu şehirde aktif yük ilanı bulunmuyor.'}
+                                {appliedCity === 'all' ? 'Aktif yük ilanı bulunmuyor.' : 'Bu şehirde aktif yük ilanı bulunmuyor.'}
                             </TableCell></TableRow>
                         )}
                       </TableBody>
@@ -212,7 +201,7 @@ export default function AdminDashboardPage() {
                         ))}
                         {!isLoading && (!filteredAvailableDrivers || filteredAvailableDrivers.length === 0) && (
                              <TableRow><TableCell colSpan={3} className="h-24 text-center">
-                                {selectedCity === 'all' ? 'Müsait şoför bulunmuyor.' : 'Bu şehirde müsait şoför bulunmuyor.'}
+                                {appliedCity === 'all' ? 'Müsait şoför bulunmuyor.' : 'Bu şehirde müsait şoför bulunmuyor.'}
                             </TableCell></TableRow>
                         )}
                       </TableBody>
