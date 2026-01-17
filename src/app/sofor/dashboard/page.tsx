@@ -111,7 +111,27 @@ export default function SoforDashboard() {
 
   const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setEditData(prev => ({ ...prev, [name]: value }));
+    if (name === 'phoneNumber') {
+        let input = value.replace(/\D/g, '');
+        if (input.startsWith('90')) {
+            input = input.substring(2);
+        }
+        input = input.substring(0, 10);
+        const size = input.length;
+        let formattedValue;
+        if (size === 0) {
+            formattedValue = '';
+        } else if (size < 4) {
+            formattedValue = '+90 (' + input;
+        } else if (size < 7) {
+            formattedValue = '+90 (' + input.substring(0, 3) + ') ' + input.substring(3, 6);
+        } else {
+            formattedValue = '+90 (' + input.substring(0, 3) + ') ' + input.substring(3, 6) + ' ' + input.substring(6, 10);
+        }
+        setEditData(prev => ({ ...prev, phoneNumber: formattedValue }));
+    } else {
+        setEditData(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleVehicleTypeChange = (value: string) => {
@@ -553,7 +573,7 @@ export default function SoforDashboard() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="phoneNumber">Telefon Numarası</Label>
-                            <Input id="phoneNumber" name="phoneNumber" value={editData.phoneNumber} onChange={handleEditInputChange} />
+                            <Input id="phoneNumber" name="phoneNumber" value={editData.phoneNumber} onChange={handleEditInputChange} placeholder="+90 (___) ___ ____" />
                         </div>
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">

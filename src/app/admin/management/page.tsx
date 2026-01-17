@@ -19,7 +19,7 @@ export default function ManagementPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
 
-    const [editingEntity, setEditingEntity] = useState(null);
+    const [editingEntity, setEditingEntity] = useState<any>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     // Data fetching
@@ -35,7 +35,7 @@ export default function ManagementPage() {
     const isLoading = isLoadingPersonel || isLoadingFirms || isLoadingDrivers;
 
     // --- GENERIC HANDLERS ---
-    const handleEditClick = (entity, type) => {
+    const handleEditClick = (entity: any, type: string) => {
         setEditingEntity({ ...entity, type });
     };
 
@@ -56,7 +56,7 @@ export default function ManagementPage() {
         }
     };
     
-    const handleDelete = async (id, type) => {
+    const handleDelete = async (id: string, type: string) => {
         if (!firestore) return;
         try {
             await deleteDoc(doc(firestore, type, id));
@@ -67,10 +67,31 @@ export default function ManagementPage() {
         }
     };
 
-    const handleDialogInputChange = (e) => {
+    const handleDialogInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!editingEntity) return;
         const { name, value } = e.target;
-        setEditingEntity(prev => ({ ...prev, [name]: value }));
+        
+        if (name === 'phoneNumber') {
+            let input = value.replace(/\D/g, '');
+            if (input.startsWith('90')) {
+                input = input.substring(2);
+            }
+            input = input.substring(0, 10);
+            const size = input.length;
+            let formattedValue;
+            if (size === 0) {
+                formattedValue = '';
+            } else if (size < 4) {
+                formattedValue = '+90 (' + input;
+            } else if (size < 7) {
+                formattedValue = '+90 (' + input.substring(0, 3) + ') ' + input.substring(3, 6);
+            } else {
+                formattedValue = '+90 (' + input.substring(0, 3) + ') ' + input.substring(3, 6) + ' ' + input.substring(6, 10);
+            }
+            setEditingEntity((prev: any) => ({ ...prev, [name]: formattedValue }));
+        } else {
+            setEditingEntity((prev: any) => ({ ...prev, [name]: value }));
+        }
     };
 
     const renderEditDialogContent = () => {
@@ -107,7 +128,7 @@ export default function ManagementPage() {
                             <div className="space-y-2"><Label htmlFor="firstName">Yetkili Adı</Label><Input name="firstName" value={commonProps.value.firstName || ''} onChange={commonProps.onChange}/></div>
                             <div className="space-y-2"><Label htmlFor="lastName">Yetkili Soyadı</Label><Input name="lastName" value={commonProps.value.lastName || ''} onChange={commonProps.onChange}/></div>
                         </div>
-                        <div className="space-y-2"><Label htmlFor="phoneNumber">Telefon</Label><Input name="phoneNumber" value={commonProps.value.phoneNumber || ''} onChange={commonProps.onChange}/></div>
+                        <div className="space-y-2"><Label htmlFor="phoneNumber">Telefon</Label><Input name="phoneNumber" value={commonProps.value.phoneNumber || ''} onChange={commonProps.onChange} placeholder="+90 (___) ___ ____" /></div>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2"><Label htmlFor="city">Şehir</Label><Input name="city" value={commonProps.value.city || ''} onChange={commonProps.onChange}/></div>
                             <div className="space-y-2"><Label htmlFor="district">İlçe</Label><Input name="district" value={commonProps.value.district || ''} onChange={commonProps.onChange}/></div>
@@ -125,7 +146,7 @@ export default function ManagementPage() {
                             <div className="space-y-2"><Label htmlFor="firstName">Ad</Label><Input name="firstName" value={commonProps.value.firstName || ''} onChange={commonProps.onChange}/></div>
                             <div className="space-y-2"><Label htmlFor="lastName">Soyad</Label><Input name="lastName" value={commonProps.value.lastName || ''} onChange={commonProps.onChange}/></div>
                         </div>
-                        <div className="space-y-2"><Label htmlFor="phoneNumber">Telefon</Label><Input name="phoneNumber" value={commonProps.value.phoneNumber || ''} onChange={commonProps.onChange}/></div>
+                        <div className="space-y-2"><Label htmlFor="phoneNumber">Telefon</Label><Input name="phoneNumber" value={commonProps.value.phoneNumber || ''} onChange={commonProps.onChange} placeholder="+90 (___) ___ ____" /></div>
                         <div className="grid grid-cols-2 gap-4">
                            <div className="space-y-2"><Label htmlFor="vehicleType">Araç Tipi</Label><Input name="vehicleType" value={commonProps.value.vehicleType || ''} onChange={commonProps.onChange}/></div>
                            <div className="space-y-2"><Label htmlFor="vehiclePlate">Plaka</Label><Input name="vehiclePlate" value={commonProps.value.vehiclePlate || ''} onChange={commonProps.onChange}/></div>
@@ -161,7 +182,7 @@ export default function ManagementPage() {
                             <Table>
                                 <TableHeader><TableRow><TableHead>Ad Soyad</TableHead><TableHead>Kullanıcı Adı (Email)</TableHead><TableHead className="text-right">İşlemler</TableHead></TableRow></TableHeader>
                                 <TableBody>
-                                    {isLoadingPersonel ? <TableRow><TableCell colSpan={3} className="h-24 text-center">Yükleniyor...</TableCell></TableRow> : personel?.map((p) => (
+                                    {isLoadingPersonel ? <TableRow><TableCell colSpan={3} className="h-24 text-center">Yükleniyor...</TableCell></TableRow> : personel?.map((p: any) => (
                                         <TableRow key={p.id}>
                                             <TableCell>{p.firstName || '-'} {p.lastName || ''}</TableCell>
                                             <TableCell>{p.username}</TableCell>
@@ -184,7 +205,7 @@ export default function ManagementPage() {
                             <Table>
                                 <TableHeader><TableRow><TableHead>Yetkili</TableHead><TableHead>Telefon</TableHead><TableHead>Konum</TableHead><TableHead className="text-right">İşlemler</TableHead></TableRow></TableHeader>
                                 <TableBody>
-                                    {isLoadingFirms ? <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow> : firmalar?.map((f) => (
+                                    {isLoadingFirms ? <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow> : firmalar?.map((f: any) => (
                                         <TableRow key={f.id}>
                                             <TableCell>{f.firstName} {f.lastName}</TableCell>
                                             <TableCell>{f.phoneNumber}</TableCell>
@@ -208,7 +229,7 @@ export default function ManagementPage() {
                              <Table>
                                 <TableHeader><TableRow><TableHead>Ad Soyad</TableHead><TableHead>Telefon</TableHead><TableHead>Araç Bilgisi</TableHead><TableHead className="text-right">İşlemler</TableHead></TableRow></TableHeader>
                                 <TableBody>
-                                    {isLoadingDrivers ? <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow> : soforler?.map((s) => (
+                                    {isLoadingDrivers ? <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow> : soforler?.map((s: any) => (
                                         <TableRow key={s.id}>
                                             <TableCell>{s.firstName} {s.lastName}</TableCell>
                                             <TableCell>{s.phoneNumber}</TableCell>

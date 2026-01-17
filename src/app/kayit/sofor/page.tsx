@@ -28,6 +28,7 @@ export default function SoforKayitPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   const checkEmail = async (email: string) => {
     if (!email) {
@@ -51,6 +52,26 @@ export default function SoforKayitPage() {
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       debouncedCheckEmail(e.target.value);
   };
+  
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.startsWith('90')) {
+            value = value.substring(2);
+        }
+        value = value.substring(0, 10);
+        const size = value.length;
+        let formattedValue;
+        if (size === 0) {
+            formattedValue = '';
+        } else if (size < 4) {
+            formattedValue = '+90 (' + value;
+        } else if (size < 7) {
+            formattedValue = '+90 (' + value.substring(0, 3) + ') ' + value.substring(3, 6);
+        } else {
+            formattedValue = '+90 (' + value.substring(0, 3) + ') ' + value.substring(3, 6) + ' ' + value.substring(6, 10);
+        }
+        setPhoneNumber(formattedValue);
+    };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -67,7 +88,6 @@ export default function SoforKayitPage() {
       const password = formData.get('password') as string;
       const firstName = formData.get('ad') as string;
       const lastName = formData.get('soyad') as string;
-      const phoneNumber = formData.get('telefon') as string;
       const vehiclePlate = formData.get('arac-plaka') as string;
 
       if (!email || !password || !firstName || !lastName || !phoneNumber || !vehicleType || !vehiclePlate) {
@@ -178,7 +198,7 @@ export default function SoforKayitPage() {
             </div>
           <div className="space-y-2">
             <Label htmlFor="telefon">Telefon Numarası</Label>
-            <Input id="telefon" name="telefon" type="tel" placeholder="555 123 4567" required disabled={isSubmitting}/>
+            <Input id="telefon" name="telefon" type="tel" placeholder="+90 (___) ___ ____" required disabled={isSubmitting} value={phoneNumber} onChange={handlePhoneChange}/>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">

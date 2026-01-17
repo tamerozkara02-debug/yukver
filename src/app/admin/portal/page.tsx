@@ -45,7 +45,27 @@ function PortalPageContents() {
 
     const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setEditData(prev => ({ ...prev, [name]: value }));
+        if (name === 'phoneNumber') {
+            let input = value.replace(/\D/g, '');
+            if (input.startsWith('90')) {
+                input = input.substring(2);
+            }
+            input = input.substring(0, 10);
+            const size = input.length;
+            let formattedValue;
+            if (size === 0) {
+                formattedValue = '';
+            } else if (size < 4) {
+                formattedValue = '+90 (' + input;
+            } else if (size < 7) {
+                formattedValue = '+90 (' + input.substring(0, 3) + ') ' + input.substring(3, 6);
+            } else {
+                formattedValue = '+90 (' + input.substring(0, 3) + ') ' + input.substring(3, 6) + ' ' + input.substring(6, 10);
+            }
+            setEditData(prev => ({ ...prev, phoneNumber: formattedValue }));
+        } else {
+            setEditData(prev => ({ ...prev, [name]: value }));
+        }
     };
     
     const handleAvatarClick = () => {
@@ -169,7 +189,7 @@ function PortalPageContents() {
                                 </div>
                                 <div>
                                     <Label htmlFor="phoneNumber">Telefon Numarası</Label>
-                                    <Input id="phoneNumber" name="phoneNumber" type="tel" value={editData.phoneNumber} onChange={handleEditInputChange} />
+                                    <Input id="phoneNumber" name="phoneNumber" type="tel" value={editData.phoneNumber} onChange={handleEditInputChange} placeholder="+90 (___) ___ ____" />
                                 </div>
                             </div>
                             <DialogFooter>
