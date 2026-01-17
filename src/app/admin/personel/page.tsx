@@ -108,11 +108,11 @@ export default function AdminPersonelPage() {
                 <div className="grid gap-4 py-4">
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="p-username" className="text-right">Kullanıcı Adı (Email)</Label>
-                        <Input id="p-username" name="p-username" type="email" defaultValue="tamerozkara02@gmail.com" className="col-span-3"/>
+                        <Input id="p-username" name="p-username" type="email" className="col-span-3"/>
                     </div>
                      <div className="grid grid-cols-4 items-center gap-4">
                         <Label htmlFor="p-password" className="text-right">Şifre</Label>
-                        <Input id="p-password" name="p-password" type="password" defaultValue="tamernecla2362" className="col-span-3" minLength={6}/>
+                        <Input id="p-password" name="p-password" type="password" className="col-span-3" minLength={6}/>
                     </div>
                      <div className="grid grid-cols-4 items-start gap-4">
                         <Label className="text-right pt-2">Yetkiler</Label>
