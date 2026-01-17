@@ -34,8 +34,14 @@ function _ensureFirebaseAdminInitialized(): App {
     } catch (initError: any) {
         // Log the detailed technical error on the server for debugging.
         console.error("CRITICAL: Firebase Admin SDK initialization failed.", initError);
-        // Throw a user-friendly error to be displayed on the client-side.
-        throw new Error("Sunucu yapılandırma hatası: Firebase Admin SDK başlatılamadı. Lütfen sistem yöneticisiyle iletişime geçin.");
+        
+        // Create a more informative error message for the client-side.
+        const detail = initError.message 
+            ? `Teknik Detay: ${initError.message}` 
+            : 'Daha fazla detay için sunucu loglarının incelenmesi gerekiyor.';
+            
+        // Throw a user-friendly but more detailed error.
+        throw new Error(`Sunucu yapılandırma hatası: Firebase Admin SDK başlatılamadı. ${detail}`);
     }
 }
 
