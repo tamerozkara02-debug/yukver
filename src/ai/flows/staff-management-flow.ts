@@ -48,7 +48,13 @@ const createStaffFlow = ai.defineFlow(
   async ({ email, password, permissions }) => {
     try {
       if (getApps().length === 0) {
-        initializeApp();
+        // Explicitly catch initialization errors to provide a better message.
+        try {
+          initializeApp();
+        } catch (initError: any) {
+           console.error("Firebase Admin SDK initialization error:", initError);
+           throw new Error("Sunucu yapılandırma hatası: Firebase Admin SDK başlatılamadı. Lütfen yöneticiyle iletişime geçin.");
+        }
       }
 
       const userRecord = await getAuth().createUser({
@@ -71,6 +77,7 @@ const createStaffFlow = ai.defineFlow(
     } catch (error: any) {
       console.error("Error in createStaffFlow:", error);
 
+      // Pass along specific, user-friendly messages from our code or underlying services.
       if (error.code === 'auth/email-already-exists') {
         throw new Error('Bu e-posta adresi zaten kullanımda.');
       }
@@ -78,7 +85,7 @@ const createStaffFlow = ai.defineFlow(
         throw new Error('Şifre en az 6 karakter olmalıdır.');
       }
       
-      // Throw the specific error message from the underlying service (e.g., Firebase Admin).
+      // If it's one of our custom errors (like the init error), or any other error, re-throw its message.
       throw new Error(error.message || 'Personel oluşturulurken bilinmeyen bir sunucu hatası oluştu.');
     }
   }
@@ -114,7 +121,12 @@ const deleteStaffFlow = ai.defineFlow(
   async ({ userId }) => {
     try {
         if (getApps().length === 0) {
-            initializeApp();
+            try {
+              initializeApp();
+            } catch (initError: any) {
+               console.error("Firebase Admin SDK initialization error:", initError);
+               throw new Error("Sunucu yapılandırma hatası: Firebase Admin SDK başlatılamadı. Lütfen yöneticiyle iletişime geçin.");
+            }
         }
         await getAuth().deleteUser(userId);
         const db = getFirestore();
