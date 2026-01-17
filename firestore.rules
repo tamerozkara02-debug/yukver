@@ -29,9 +29,10 @@ service cloud.firestore {
       allow update: if isOwner(firmId);
       allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
       
-      // LOADS: Owners can manage their own loads, admins can delete them.
+      // LOADS: Owners can manage their own loads, admins can read and delete them.
       match /loads/{loadId} {
-        allow read, create, update: if isOwner(firmId);
+        allow read: if isOwner(firmId) || userIsAdmin();
+        allow create, update: if isOwner(firmId);
         allow delete: if isOwner(firmId) || (userIsAdmin() && getAdminPermissions().canManageMembers == true);
       }
     }
