@@ -32,6 +32,13 @@ import { initializeApp, deleteApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, signOut as signOutTempUser, getAuth } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 
+const defaultPermissions: AdminPermissions = {
+    canViewDashboard: true,
+    canTrackLocations: false,
+    canManageMembers: false,
+    canManageStaff: false,
+};
+
 
 export default function AdminPersonelPage() {
     const firestore = useFirestore();
@@ -45,6 +52,8 @@ export default function AdminPersonelPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [newStaffPermissions, setNewStaffPermissions] = useState<AdminPermissions>(defaultPermissions);
+
 
     const [editingStaff, setEditingStaff] = useState<any | null>(null);
     const [permissionsToUpdate, setPermissionsToUpdate] = useState<AdminPermissions | null>(null);
@@ -52,6 +61,12 @@ export default function AdminPersonelPage() {
     const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
+    const handleNewStaffPermissionChange = (permissionKey: keyof AdminPermissions, value: boolean) => {
+        setNewStaffPermissions(prev => ({
+            ...prev,
+            [permissionKey]: value,
+        }));
+    };
 
     const handleAddStaff = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -78,26 +93,17 @@ export default function AdminPersonelPage() {
             const newStaffUser = userCredential.user;
 
             const adminRoleRef = doc(firestore, 'roles_admin', newStaffUser.uid);
-            
-            const defaultPermissions = {
-                canViewDashboard: true,
-                canTrackLocations: false,
-                canManageMembers: false,
-                canManageStaff: false,
-            };
 
             await setDoc(adminRoleRef, {
                 id: newStaffUser.uid,
                 username: newStaffUser.email,
-                permissions: defaultPermissions,
+                permissions: newStaffPermissions,
             });
 
             toast({ title: 'Başarılı', description: `${newStaffUser.email} adlı personel başarıyla oluşturuldu.` });
             
             setIsAddDialogOpen(false);
-            setUsername('');
-            setPassword('');
-            setConfirmPassword('');
+            // Reset form states in onOpenChange
 
         } catch (error: any) {
             console.error("Error adding staff:", error);
@@ -136,12 +142,7 @@ export default function AdminPersonelPage() {
 
     const openEditDialog = (staff: any) => {
         setEditingStaff(staff);
-        setPermissionsToUpdate(staff.permissions || {
-            canViewDashboard: true,
-            canTrackLocations: false,
-            canManageMembers: false,
-            canManageStaff: false,
-        });
+        setPermissionsToUpdate(staff.permissions || defaultPermissions);
     };
 
     const closeEditDialog = () => {
@@ -194,6 +195,7 @@ export default function AdminPersonelPage() {
                 setUsername('');
                 setPassword('');
                 setConfirmPassword('');
+                setNewStaffPermissions(defaultPermissions);
             }
         }}>
             <DialogTrigger asChild>
@@ -204,7 +206,7 @@ export default function AdminPersonelPage() {
                 <DialogHeader>
                     <DialogTitle className="font-headline">Yeni Personel Oluştur</DialogTitle>
                     <DialogDescription>
-                       Yeni personel için giriş bilgilerini oluşturun. Bu işlem hem bir kullanıcı hesabı hem de personel rolü yaratacaktır.
+                       Yeni personel için giriş bilgilerini ve başlangıç yetkilerini belirleyin.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -238,6 +240,53 @@ export default function AdminPersonelPage() {
                             onChange={(e) => setConfirmPassword(e.target.value)} 
                             required 
                         />
+                    </div>
+                    <div className="space-y-4 pt-4">
+                         <h4 className="font-medium text-sm">Başlangıç Yetkileri</h4>
+                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="new-perm-dashboard">Dashboard Görüntüleme</Label>
+                            </div>
+                            <Switch
+                                id="new-perm-dashboard"
+                                checked={newStaffPermissions.canViewDashboard}
+                                onCheckedChange={(value) => handleNewStaffPermissionChange('canViewDashboard', value)}
+                                disabled={isSubmitting}
+                            />
+                        </div>
+                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="new-perm-location">Konum Takibi</Label>
+                            </div>
+                            <Switch
+                                id="new-perm-location"
+                                checked={newStaffPermissions.canTrackLocations}
+                                onCheckedChange={(value) => handleNewStaffPermissionChange('canTrackLocations', value)}
+                                disabled={isSubmitting}
+                            />
+                        </div>
+                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="new-perm-members">Üye Yönetimi</Label>
+                            </div>
+                            <Switch
+                                id="new-perm-members"
+                                checked={newStaffPermissions.canManageMembers}
+                                onCheckedChange={(value) => handleNewStaffPermissionChange('canManageMembers', value)}
+                                disabled={isSubmitting}
+                            />
+                        </div>
+                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <Label htmlFor="new-perm-staff">Personel Yönetimi</Label>
+                            </div>
+                            <Switch
+                                id="new-perm-staff"
+                                checked={newStaffPermissions.canManageStaff}
+                                onCheckedChange={(value) => handleNewStaffPermissionChange('canManageStaff', value)}
+                                disabled={isSubmitting}
+                            />
+                        </div>
                     </div>
                 </div>
                 <DialogFooter>
@@ -369,3 +418,4 @@ export default function AdminPersonelPage() {
     </div>
   );
 }
+    
