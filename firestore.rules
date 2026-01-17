@@ -46,6 +46,11 @@ service cloud.firestore {
       allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
     }
     
+    // Allow admins to list all loads via a collection group query for the 'ilanlar' page.
+    match /{path=**}/loads/{loadId} {
+      allow read: if userIsAdmin();
+    }
+    
     // REVIEWS: Authenticated users can create reviews.
     // Only admins can read, update, or delete them, as they are for internal purposes.
     match /reviews/{reviewId} {
