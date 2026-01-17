@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, collectionGroup, query, where } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -9,10 +9,14 @@ import { Building, Truck, Users, Briefcase } from "lucide-react";
 import { format } from 'date-fns';
 import { useAdmin } from '@/hooks/use-admin';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 export default function AdminDashboardPage() {
   const firestore = useFirestore();
   const { adminData, isLoading: isAdminLoading } = useAdmin();
+
+  const [selectedCity, setSelectedCity] = useState<string>('all');
 
   // Query for all loads using a collection group query
   const loadsQuery = useMemoFirebase(
@@ -52,6 +56,32 @@ export default function AdminDashboardPage() {
     const firm = firms?.find(f => f.id === firmId);
     return firm ? `${firm.firstName} ${firm.lastName}` : 'Bilinmeyen Firma';
   }
+  
+  const allCities = useMemo(() => {
+    const citySet = new Set<string>();
+    if (loads) {
+      loads.forEach(load => {
+        if (load.originCity) citySet.add(load.originCity);
+        if (load.destinationCity) citySet.add(load.destinationCity);
+      });
+    }
+    if (drivers) {
+        drivers.forEach(driver => {
+            if (driver.currentCity) citySet.add(driver.currentCity);
+        });
+    }
+    return ['all', ...Array.from(citySet).sort()];
+  }, [loads, drivers]);
+
+  const filteredLoads = useMemo(() => {
+    if (selectedCity === 'all') return loads;
+    return loads?.filter(load => load.originCity === selectedCity || load.destinationCity === selectedCity) || [];
+  }, [loads, selectedCity]);
+
+  const filteredAvailableDrivers = useMemo(() => {
+    if (selectedCity === 'all') return availableDrivers;
+    return availableDrivers?.filter(driver => driver.currentCity === selectedCity) || [];
+  }, [availableDrivers, selectedCity]);
 
   const isFullAdmin = adminData?.permissions?.canViewDashboard;
 
@@ -99,78 +129,98 @@ export default function AdminDashboardPage() {
           )
         )}
         
-        <div className={`grid gap-6 lg:grid-cols-2 ${isFullAdmin ? 'mt-8' : ''}`}>
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Briefcase className="w-5 h-5 text-primary" />
-                    Aktif Yük İlanları ({loads?.length || 0})
-                </CardTitle>
-                <CardDescription>Firmalar tarafından oluşturulan tüm aktif yük talepleri.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Firma</TableHead>
-                      <TableHead>Yük</TableHead>
-                      <TableHead>Güzergah</TableHead>
-                      <TableHead>Tarih</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
-                    {!isLoading && loads?.map((load: any) => (
-                      <TableRow key={load.id}>
-                        <TableCell className="font-medium">{getFirmName(load.firmId)}</TableCell>
-                        <TableCell>{load.loadType} - {load.tonnage} ton</TableCell>
-                        <TableCell>{load.originCity} → {load.destinationCity}</TableCell>
-                        <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
-                      </TableRow>
+        <div className="space-y-4">
+            <div className="flex items-center gap-4 p-4 bg-card border rounded-lg">
+                <Label htmlFor="city-filter" className="text-sm font-medium">Şehre Göre Filtrele:</Label>
+                <Select value={selectedCity} onValueChange={setSelectedCity}>
+                  <SelectTrigger id="city-filter" className="w-auto min-w-[200px]">
+                    <SelectValue placeholder="Şehir seçin..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allCities.map(city => (
+                      <SelectItem key={city} value={city}>
+                        {city === 'all' ? 'Tüm Şehirler' : city}
+                      </SelectItem>
                     ))}
-                    {!isLoading && (!loads || loads.length === 0) && (
-                        <TableRow><TableCell colSpan={4} className="h-24 text-center">Aktif yük ilanı bulunmuyor.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                  </SelectContent>
+                </Select>
+            </div>
+            <div className="grid gap-6 lg:grid-cols-2">
+                <Card className="lg:col-span-1">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Briefcase className="w-5 h-5 text-primary" />
+                        Aktif Yük İlanları ({filteredLoads?.length || 0})
+                    </CardTitle>
+                    <CardDescription>Firmalar tarafından oluşturulan tüm aktif yük talepleri.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Firma</TableHead>
+                          <TableHead>Yük</TableHead>
+                          <TableHead>Güzergah</TableHead>
+                          <TableHead>Tarih</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
+                        {!isLoading && filteredLoads?.map((load: any) => (
+                          <TableRow key={load.id}>
+                            <TableCell className="font-medium">{getFirmName(load.firmId)}</TableCell>
+                            <TableCell>{load.loadType} - {load.tonnage} ton</TableCell>
+                            <TableCell>{load.originCity} → {load.destinationCity}</TableCell>
+                            <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
+                          </TableRow>
+                        ))}
+                        {!isLoading && (!filteredLoads || filteredLoads.length === 0) && (
+                            <TableRow><TableCell colSpan={4} className="h-24 text-center">
+                                {selectedCity === 'all' ? 'Aktif yük ilanı bulunmuyor.' : 'Bu şehirde aktif yük ilanı bulunmuyor.'}
+                            </TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
 
-            <Card className="lg:col-span-1">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Truck className="w-5 h-5 text-primary" />
-                    Müsait Şoförler ({availableDrivers?.length || 0})
-                </CardTitle>
-                <CardDescription>Şu anda yüke hazır olan şoförlerin listesi.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Ad Soyad</TableHead>
-                      <TableHead>Anlık Şehir</TableHead>
-                      <TableHead>Araç Bilgisi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading && <TableRow><TableCell colSpan={3} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
-                    {!isLoading && availableDrivers?.map((sofor: any) => (
-                      <TableRow key={sofor.id}>
-                        <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
-                        <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
-                        <TableCell>{sofor.vehicleType}</TableCell>
-                      </TableRow>
-                    ))}
-                    {!isLoading && (!availableDrivers || availableDrivers.length === 0) && (
-                        <TableRow><TableCell colSpan={3} className="h-24 text-center">Müsait şoför bulunmuyor.</TableCell></TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-      </div>
-
+                <Card className="lg:col-span-1">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Truck className="w-5 h-5 text-primary" />
+                        Müsait Şoförler ({filteredAvailableDrivers?.length || 0})
+                    </CardTitle>
+                    <CardDescription>Şu anda yüke hazır olan şoförlerin listesi.</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Ad Soyad</TableHead>
+                          <TableHead>Anlık Şehir</TableHead>
+                          <TableHead>Araç Bilgisi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {isLoading && <TableRow><TableCell colSpan={3} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
+                        {!isLoading && filteredAvailableDrivers?.map((sofor: any) => (
+                          <TableRow key={sofor.id}>
+                            <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
+                            <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
+                            <TableCell>{sofor.vehicleType}</TableCell>
+                          </TableRow>
+                        ))}
+                        {!isLoading && (!filteredAvailableDrivers || filteredAvailableDrivers.length === 0) && (
+                             <TableRow><TableCell colSpan={3} className="h-24 text-center">
+                                {selectedCity === 'all' ? 'Müsait şoför bulunmuyor.' : 'Bu şehirde müsait şoför bulunmuyor.'}
+                            </TableCell></TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+          </div>
+        </div>
     </div>
   );
 }
