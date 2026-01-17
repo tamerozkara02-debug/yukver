@@ -112,6 +112,8 @@ export default function FirmaKayitPage() {
             console.error("Firma kayıt hatası:", error);
             if (error.code === 'auth/email-already-in-use') {
                  toast({ variant: 'destructive', title: 'Kayıt Başarısız', description: 'Bu e-posta adresi zaten kullanımda.' });
+            } else if (error.code === 'auth/invalid-email') {
+                toast({ variant: 'destructive', title: 'Geçersiz E-posta', description: 'Lütfen geçerli ve gerçek bir e-posta adresi girin. Sistem, sahte veya geçersiz formatlı adresleri kabul etmemektedir.' });
             } else {
                 toast({ variant: 'destructive', title: 'Kayıt Başarısız', description: 'Bir hata oluştu. Lütfen tekrar deneyin.' });
             }
