@@ -16,93 +16,62 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { PlusCircle, Trash2 } from "lucide-react"
+import { PlusCircle, Trash2, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { collection, doc, setDoc, deleteDoc } from "firebase/firestore"
-import { useState, useMemo } from "react"
+import { collection, doc, deleteDoc } from "firebase/firestore"
+import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAdmin } from "@/hooks/use-admin"
-
-interface UserToPromote {
-    id: string;
-    name: string;
-    email: string;
-    role: 'Firma' | 'Şoför';
-}
+import { createStaffUser } from "@/ai/flows/staff-management-flow"
 
 export default function AdminPersonelPage() {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
     const { adminData } = useAdmin();
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [selectedUser, setSelectedUser] = useState<string | undefined>(undefined);
-    const [permissions, setPermissions] = useState({
-        canViewDashboard: true,
-        canTrackLocations: false,
-        canManageMembers: false,
-        canManageStaff: false,
-    });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     
-    // Fetch all collections needed
     const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
-    const firmsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'firms') : null, [firestore]);
-    const driversCollection = useMemoFirebase(() => firestore ? collection(firestore, 'drivers') : null, [firestore]);
-
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
-    const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
-    const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
-
-    // Combine firms and drivers into a single list of users who can be promoted
-    const promotableUsers = useMemo<UserToPromote[]>(() => {
-        const firmUsers = firmalar?.map(f => ({ id: f.id, name: `${f.firstName} ${f.lastName}`, email: `Firma`, role: 'Firma' as const })) || [];
-        const driverUsers = soforler?.map(d => ({ id: d.id, name: `${d.firstName} ${d.lastName}`, email: `${d.vehiclePlate}`, role: 'Şoför' as const })) || [];
-        
-        // Filter out users who are already staff
-        const staffIds = new Set(personel?.map(p => p.id));
-        const allUsers = [...firmUsers, ...driverUsers];
-        
-        return allUsers.filter(u => !staffIds.has(u.id));
-
-    }, [firmalar, soforler, personel]);
-
-    const handlePermissionChange = (key: keyof typeof permissions, checked: boolean) => {
-        setPermissions(prev => ({ ...prev, [key]: checked }));
-    };
 
     const handleAddStaff = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!firestore || !selectedUser) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen bir kullanıcı seçin.' });
+        
+        if (password !== confirmPassword) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Girdiğiniz şifreler eşleşmiyor.' });
             return;
         }
 
-        const userToPromote = promotableUsers.find(u => u.id === selectedUser);
-        if (!userToPromote) {
-             toast({ variant: 'destructive', title: 'Hata', description: 'Seçilen kullanıcı bulunamadı.' });
+        if (password.length < 6) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Şifre en az 6 karakter olmalıdır.' });
             return;
         }
+
+        setIsSubmitting(true);
 
         try {
-            const adminRoleRef = doc(firestore, 'roles_admin', userToPromote.id);
-            await setDoc(adminRoleRef, {
-                id: userToPromote.id,
-                username: userToPromote.name, // Using name as username for display
-                permissions: permissions,
-            });
+            await createStaffUser({ email, password });
 
-            toast({ title: 'Başarılı', description: `${userToPromote.name} adlı kullanıcıya personel rolü verildi.` });
+            toast({ title: 'Başarılı', description: `${email} adlı kullanıcı personel olarak eklendi.` });
             setIsDialogOpen(false);
-            setSelectedUser(undefined);
+            setEmail("");
+            setPassword("");
+            setConfirmPassword("");
 
         } catch (error: any) {
-            console.error("Error adding staff role:", error);
-            toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel rolü atanamadı. Güvenlik kurallarını veya bağlantınızı kontrol edin.' });
+            console.error("Error adding staff:", error);
+            toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel eklenemedi.' });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -114,6 +83,10 @@ export default function AdminPersonelPage() {
         }
         try {
             await deleteDoc(doc(firestore, 'roles_admin', id));
+            // Note: This only removes the admin role from Firestore.
+            // The user account still exists in Firebase Authentication.
+            // Deleting from Auth requires Admin SDK and should be handled in a backend flow.
+            // For now, this is sufficient to revoke admin privileges.
             toast({ title: 'Başarılı', description: 'Personel rolü kaldırıldı. Kullanıcının kimlik doğrulaması hala mevcuttur.' });
         } catch (error: any) {
             console.error("Error deleting staff role:", error);
@@ -122,72 +95,45 @@ export default function AdminPersonelPage() {
     }
     
     const canManage = adminData?.permissions.canManageStaff ?? false;
-    const isLoading = isLoadingPersonel || isLoadingFirms || isLoadingDrivers;
 
   return (
     <div className="space-y-6">
        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight font-headline">Personel Yönetimi</h1>
-          <p className="text-muted-foreground">Mevcut kullanıcılara yönetici veya operatör yetkileri atayın.</p>
+          <p className="text-muted-foreground">Yeni personel ekleyin veya mevcut personeli yönetin.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-                <Button disabled={!canManage}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Personel Yetkilendir</Button>
+                <Button disabled={!canManage}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Personel Ekle</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                  <form onSubmit={handleAddStaff}>
                 <DialogHeader>
-                    <DialogTitle className="font-headline">Kullanıcıyı Personel Olarak Yetkilendir</DialogTitle>
+                    <DialogTitle className="font-headline">Yeni Personel Ekle</DialogTitle>
                     <DialogDescription>
-                        Sistemde kayıtlı bir kullanıcıyı seçin ve ona personel yetkileri atayın. Bu işlem kullanıcı hesabı oluşturmaz, sadece mevcut bir kullanıcıyı yetkilendirir.
+                        Personel için bir e-posta ve şifre oluşturun. Bu işlem, kullanıcıyı sisteme kaydedecek ve varsayılan personel yetkilerini atayacaktır.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="user-select" className="text-right">Kullanıcı</Label>
-                         <Select value={selectedUser} onValueChange={setSelectedUser}>
-                            <SelectTrigger id="user-select" className="col-span-3">
-                                <SelectValue placeholder="Yetkilendirilecek kullanıcıyı seçin..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {isLoading && <SelectItem value="loading" disabled>Kullanıcılar yükleniyor...</SelectItem>}
-                                {!isLoading && promotableUsers.map(user => (
-                                    <SelectItem key={user.id} value={user.id}>
-                                        <div className="flex flex-col">
-                                            <span>{user.name}</span>
-                                            <span className="text-xs text-muted-foreground">{user.role} - {user.email}</span>
-                                        </div>
-                                    </SelectItem>
-                                ))}
-                                {!isLoading && promotableUsers.length === 0 && <SelectItem value="none" disabled>Yetkilendirilecek kullanıcı bulunmuyor.</SelectItem>}
-                            </SelectContent>
-                        </Select>
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="personel@sirket.com" required />
                     </div>
-                     <div className="grid grid-cols-4 items-start gap-4">
-                        <Label className="text-right pt-2">Yetkiler</Label>
-                        <div className="col-span-3 space-y-2">
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="p-canViewDashboard" checked={permissions.canViewDashboard} onCheckedChange={(c) => handlePermissionChange('canViewDashboard', c as boolean)} defaultChecked={true} />
-                                <Label htmlFor="p-canViewDashboard" className="font-normal">Dashboard Görüntüleme</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="p-canTrackLocations" checked={permissions.canTrackLocations} onCheckedChange={(c) => handlePermissionChange('canTrackLocations', c as boolean)} />
-                                <Label htmlFor="p-canTrackLocations" className="font-normal">Konum Takibi</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox id="p-canManageMembers" checked={permissions.canManageMembers} onCheckedChange={(c) => handlePermissionChange('canManageMembers', c as boolean)} />
-                                <Label htmlFor="p-canManageMembers" className="font-normal">Üye Yönetimi</Label>
-                            </div>
-                             <div className="flex items-center space-x-2">
-                                <Checkbox id="p-canManageStaff" checked={permissions.canManageStaff} onCheckedChange={(c) => handlePermissionChange('canManageStaff', c as boolean)} />
-                                <Label htmlFor="p-canManageStaff" className="font-normal">Personel Yönetimi</Label>
-                            </div>
-                        </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="password">Şifre</Label>
+                        <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="En az 6 karakter" required />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="confirm-password">Şifre (Tekrar)</Label>
+                        <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Şifreyi doğrulayın" required />
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button type="submit">Yetkilendir</Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isSubmitting ? 'Ekleniyor...' : 'Ekle'}
+                    </Button>
                 </DialogFooter>
                 </form>
             </DialogContent>
@@ -209,7 +155,7 @@ export default function AdminPersonelPage() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {isLoadingPersonel && <TableRow><TableCell colSpan={3}>Yükleniyor...</TableCell></TableRow>}
+                {isLoadingPersonel && <TableRow><TableCell colSpan={3} className="text-center">Yükleniyor...</TableCell></TableRow>}
                 {!isLoadingPersonel && personel && personel.map((p: any) => (
                 <TableRow key={p.id}>
                     <TableCell>{p.username}</TableCell>
