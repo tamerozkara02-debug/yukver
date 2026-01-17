@@ -182,239 +182,283 @@ export default function AdminPersonelPage() {
         }
     };
 
-  return (
-    <div className="space-y-6">
-       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight font-headline">Personel Yönetimi</h1>
-          <p className="text-muted-foreground">Yeni personel hesapları oluşturun veya mevcutları yönetin.</p>
-        </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => {
-            setIsAddDialogOpen(isOpen);
-            if (!isOpen) {
-                setUsername('');
-                setPassword('');
-                setConfirmPassword('');
-                setNewStaffPermissions(defaultPermissions);
-            }
-        }}>
-            <DialogTrigger asChild>
-                <Button disabled={!canManage}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Personel Oluştur</Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-                 <form onSubmit={handleAddStaff}>
-                <DialogHeader>
-                    <DialogTitle className="font-headline">Yeni Personel Oluştur</DialogTitle>
-                    <DialogDescription>
-                       Yeni personel için giriş bilgilerini ve başlangıç yetkilerini belirleyin.
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="username">Email</Label>
-                        <Input 
-                            id="username" 
-                            type="email" 
-                            value={username} 
-                            onChange={(e) => setUsername(e.target.value)} 
-                            placeholder="personel@sirket.com" 
-                            required 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Şifre</Label>
-                        <Input 
-                            id="password" 
-                            type="password" 
-                            value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
-                            required 
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Şifre (Tekrar)</Label>
-                        <Input 
-                            id="confirmPassword" 
-                            type="password" 
-                            value={confirmPassword} 
-                            onChange={(e) => setConfirmPassword(e.target.value)} 
-                            required 
-                        />
-                    </div>
-                    <div className="space-y-4 pt-4">
-                         <h4 className="font-medium text-sm">Başlangıç Yetkileri</h4>
-                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="new-perm-dashboard">Dashboard Görüntüleme</Label>
-                            </div>
-                            <Switch
-                                id="new-perm-dashboard"
-                                checked={newStaffPermissions.canViewDashboard}
-                                onCheckedChange={(value) => handleNewStaffPermissionChange('canViewDashboard', value)}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="new-perm-location">Konum Takibi</Label>
-                            </div>
-                            <Switch
-                                id="new-perm-location"
-                                checked={newStaffPermissions.canTrackLocations}
-                                onCheckedChange={(value) => handleNewStaffPermissionChange('canTrackLocations', value)}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="new-perm-members">Üye Yönetimi</Label>
-                            </div>
-                            <Switch
-                                id="new-perm-members"
-                                checked={newStaffPermissions.canManageMembers}
-                                onCheckedChange={(value) => handleNewStaffPermissionChange('canManageMembers', value)}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                         <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="new-perm-staff">Personel Yönetimi</Label>
-                            </div>
-                            <Switch
-                                id="new-perm-staff"
-                                checked={newStaffPermissions.canManageStaff}
-                                onCheckedChange={(value) => handleNewStaffPermissionChange('canManageStaff', value)}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                    </div>
-                </div>
-                <DialogFooter>
-                    <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isSubmitting ? 'Oluşturuluyor...' : 'Personel Oluştur'}
-                    </Button>
-                </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
-      </div>
+    const grantSelfStaffManagementPermission = async () => {
+        if (!user || !firestore) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Kullanıcı doğrulaması başarısız oldu.' });
+            return;
+        }
 
-       <Card>
-        <CardHeader>
-            <CardTitle>Personel Listesi</CardTitle>
-            <CardDescription>Sistemdeki tüm personel hesapları ve yetkileri.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Table>
-            <TableHeader>
-                <TableRow>
-                <TableHead>Kullanıcı Adı</TableHead>
-                <TableHead>Yetkiler</TableHead>
-                <TableHead className="text-right">İşlemler</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {isLoadingPersonel && <TableRow><TableCell colSpan={3} className="text-center">Yükleniyor...</TableCell></TableRow>}
-                {!isLoadingPersonel && personel && personel.map((p: any) => (
-                <TableRow key={p.id}>
-                    <TableCell>{p.username}</TableCell>
-                    <TableCell className="space-x-1">
-                      {p.permissions?.canViewDashboard && <Badge variant="outline">Dashboard</Badge>}
-                      {p.permissions?.canTrackLocations && <Badge variant="outline">Konum</Badge>}
-                      {p.permissions?.canManageMembers && <Badge variant="outline">Üyeler</Badge>}
-                      {p.permissions?.canManageStaff && <Badge variant="outline" className="bg-primary/20 text-primary-foreground border-primary">Personel</Badge>}
-                      {!p.permissions && <Badge variant="secondary">Yetki Yok</Badge>}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="icon" onClick={() => openEditDialog(p)} disabled={!canManage}>
-                            <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="destructive" size="icon" onClick={() => handleDeleteStaff(p.id)} disabled={p.id === user?.uid || !canManage}>
-                            <Trash2 className="h-4 w-4"/>
-                        </Button>
-                    </TableCell>
-                </TableRow>
-                ))}
-                {!isLoadingPersonel && (!personel || personel.length === 0) && (
-                    <TableRow>
-                        <TableCell colSpan={3} className="text-center">Henüz personel atanmamış.</TableCell>
-                    </TableRow>
-                )}
-            </TableBody>
-            </Table>
-        </CardContent>
+        setIsSubmitting(true);
+        try {
+            const selfAdminDocRef = doc(firestore, 'roles_admin', user.uid);
+            await updateDoc(selfAdminDocRef, {
+                'permissions.canManageStaff': true,
+            });
+            toast({ title: 'Başarılı!', description: 'Personel yönetimi yetkisi etkinleştirildi. Değişikliklerin yansıması için sayfa yenileniyor...' });
+            setTimeout(() => window.location.reload(), 2000);
+        } catch (error: any) {
+            console.error("Error granting permission:", error);
+            toast({ variant: 'destructive', title: 'Hata', description: `Yetki verilemedi: ${error.message}. Güvenlik kurallarını kontrol edin.` });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+  return (
+    <div>
+      {adminData && !adminData.permissions.canManageStaff && (
+        <Card className="mb-6 bg-amber-50 border-amber-200">
+            <CardHeader>
+                <CardTitle className="font-headline text-xl">Eksik Yetki: Personel Yönetimi</CardTitle>
+                <CardDescription>
+                    Yönetici hesabınız var ancak yeni personel eklemek veya mevcut personeli yönetmek için gerekli olan "Personel Yönetimi" yetkiniz aktif değil.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                    Bu yetkiyi etkinleştirmek için aşağıdaki butona tıklayın. Bu işlem, mevcut yönetici hesabınıza personel yönetme kabiliyeti ekleyecektir.
+                </p>
+                <Button onClick={grantSelfStaffManagementPermission} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Personel Yönetim Yetkisini Etkinleştir
+                </Button>
+            </CardContent>
         </Card>
-        
-        <Dialog open={!!editingStaff} onOpenChange={(isOpen) => !isOpen && closeEditDialog()}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle className="font-headline">Yetkileri Düzenle: {editingStaff?.username}</DialogTitle>
-                    <DialogDescription>
-                        Personelin erişebileceği modülleri buradan yönetebilirsiniz.
-                    </DialogDescription>
-                </DialogHeader>
-                {permissionsToUpdate && (
-                    <div className="grid gap-4 py-4">
-                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="perm-dashboard">Dashboard Görüntüleme</Label>
-                                <p className="text-xs text-muted-foreground">Ana paneli ve istatistikleri görebilir.</p>
-                            </div>
-                            <Switch
-                                id="perm-dashboard"
-                                checked={permissionsToUpdate.canViewDashboard}
-                                onCheckedChange={(value) => handlePermissionChange('canViewDashboard', value)}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="perm-location">Konum Takibi</Label>
-                                <p className="text-xs text-muted-foreground">Şoförlerin anlık konumlarını haritada izleyebilir.</p>
-                            </div>
-                            <Switch
-                                id="perm-location"
-                                checked={permissionsToUpdate.canTrackLocations}
-                                onCheckedChange={(value) => handlePermissionChange('canTrackLocations', value)}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="perm-members">Üye Yönetimi</Label>
-                                <p className="text-xs text-muted-foreground">Firma ve şoför hesaplarını yönetebilir.</p>
-                            </div>
-                            <Switch
-                                id="perm-members"
-                                checked={permissionsToUpdate.canManageMembers}
-                                onCheckedChange={(value) => handlePermissionChange('canManageMembers', value)}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <Label htmlFor="perm-staff">Personel Yönetimi</Label>
-                                <p className="text-xs text-muted-foreground">Yeni personel ekleyebilir ve yetkilerini düzenleyebilir.</p>
-                            </div>
-                            <Switch
-                                id="perm-staff"
-                                checked={permissionsToUpdate.canManageStaff}
-                                onCheckedChange={(value) => handlePermissionChange('canManageStaff', value)}
-                                disabled={isSubmitting}
-                            />
-                        </div>
-                    </div>
-                )}
-                <DialogFooter>
-                    <Button variant="outline" onClick={closeEditDialog}>İptal</Button>
-                    <Button onClick={handleSavePermissions} disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isSubmitting ? 'Kaydediliyor...' : 'Yetkileri Kaydet'}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+      )}
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight font-headline">Personel Yönetimi</h1>
+            <p className="text-muted-foreground">Yeni personel hesapları oluşturun veya mevcutları yönetin.</p>
+          </div>
+          <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => {
+              setIsAddDialogOpen(isOpen);
+              if (!isOpen) {
+                  setUsername('');
+                  setPassword('');
+                  setConfirmPassword('');
+                  setNewStaffPermissions(defaultPermissions);
+              }
+          }}>
+              <DialogTrigger asChild>
+                  <Button disabled={!canManage}><PlusCircle className="mr-2 h-4 w-4"/> Yeni Personel Oluştur</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                  <form onSubmit={handleAddStaff}>
+                  <DialogHeader>
+                      <DialogTitle className="font-headline">Yeni Personel Oluştur</DialogTitle>
+                      <DialogDescription>
+                        Yeni personel için giriş bilgilerini ve başlangıç yetkilerini belirleyin.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                      <div className="space-y-2">
+                          <Label htmlFor="username">Email</Label>
+                          <Input 
+                              id="username" 
+                              type="email" 
+                              value={username} 
+                              onChange={(e) => setUsername(e.target.value)} 
+                              placeholder="personel@sirket.com" 
+                              required 
+                          />
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="password">Şifre</Label>
+                          <Input 
+                              id="password" 
+                              type="password" 
+                              value={password} 
+                              onChange={(e) => setPassword(e.target.value)} 
+                              required 
+                          />
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor="confirmPassword">Şifre (Tekrar)</Label>
+                          <Input 
+                              id="confirmPassword" 
+                              type="password" 
+                              value={confirmPassword} 
+                              onChange={(e) => setConfirmPassword(e.target.value)} 
+                              required 
+                          />
+                      </div>
+                      <div className="space-y-4 pt-4">
+                          <h4 className="font-medium text-sm">Başlangıç Yetkileri</h4>
+                          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="new-perm-dashboard">Dashboard Görüntüleme</Label>
+                              </div>
+                              <Switch
+                                  id="new-perm-dashboard"
+                                  checked={newStaffPermissions.canViewDashboard}
+                                  onCheckedChange={(value) => handleNewStaffPermissionChange('canViewDashboard', value)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="new-perm-location">Konum Takibi</Label>
+                              </div>
+                              <Switch
+                                  id="new-perm-location"
+                                  checked={newStaffPermissions.canTrackLocations}
+                                  onCheckedChange={(value) => handleNewStaffPermissionChange('canTrackLocations', value)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="new-perm-members">Üye Yönetimi</Label>
+                              </div>
+                              <Switch
+                                  id="new-perm-members"
+                                  checked={newStaffPermissions.canManageMembers}
+                                  onCheckedChange={(value) => handleNewStaffPermissionChange('canManageMembers', value)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="new-perm-staff">Personel Yönetimi</Label>
+                              </div>
+                              <Switch
+                                  id="new-perm-staff"
+                                  checked={newStaffPermissions.canManageStaff}
+                                  onCheckedChange={(value) => handleNewStaffPermissionChange('canManageStaff', value)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                      </div>
+                  </div>
+                  <DialogFooter>
+                      <Button type="submit" disabled={isSubmitting}>
+                          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {isSubmitting ? 'Oluşturuluyor...' : 'Personel Oluştur'}
+                      </Button>
+                  </DialogFooter>
+                  </form>
+              </DialogContent>
+          </Dialog>
+        </div>
+
+        <Card>
+          <CardHeader>
+              <CardTitle>Personel Listesi</CardTitle>
+              <CardDescription>Sistemdeki tüm personel hesapları ve yetkileri.</CardDescription>
+          </CardHeader>
+          <CardContent>
+              <Table>
+              <TableHeader>
+                  <TableRow>
+                  <TableHead>Kullanıcı Adı</TableHead>
+                  <TableHead>Yetkiler</TableHead>
+                  <TableHead className="text-right">İşlemler</TableHead>
+                  </TableRow>
+              </TableHeader>
+              <TableBody>
+                  {isLoadingPersonel && <TableRow><TableCell colSpan={3} className="text-center">Yükleniyor...</TableCell></TableRow>}
+                  {!isLoadingPersonel && personel && personel.map((p: any) => (
+                  <TableRow key={p.id}>
+                      <TableCell>{p.username}</TableCell>
+                      <TableCell className="space-x-1">
+                        {p.permissions?.canViewDashboard && <Badge variant="outline">Dashboard</Badge>}
+                        {p.permissions?.canTrackLocations && <Badge variant="outline">Konum</Badge>}
+                        {p.permissions?.canManageMembers && <Badge variant="outline">Üyeler</Badge>}
+                        {p.permissions?.canManageStaff && <Badge variant="outline" className="bg-primary/20 text-primary-foreground border-primary">Personel</Badge>}
+                        {!p.permissions && <Badge variant="secondary">Yetki Yok</Badge>}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                          <Button variant="outline" size="icon" onClick={() => openEditDialog(p)} disabled={!canManage}>
+                              <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="destructive" size="icon" onClick={() => handleDeleteStaff(p.id)} disabled={p.id === user?.uid || !canManage}>
+                              <Trash2 className="h-4 w-4"/>
+                          </Button>
+                      </TableCell>
+                  </TableRow>
+                  ))}
+                  {!isLoadingPersonel && (!personel || personel.length === 0) && (
+                      <TableRow>
+                          <TableCell colSpan={3} className="text-center">Henüz personel atanmamış.</TableCell>
+                      </TableRow>
+                  )}
+              </TableBody>
+              </Table>
+          </CardContent>
+          </Card>
+          
+          <Dialog open={!!editingStaff} onOpenChange={(isOpen) => !isOpen && closeEditDialog()}>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle className="font-headline">Yetkileri Düzenle: {editingStaff?.username}</DialogTitle>
+                      <DialogDescription>
+                          Personelin erişebileceği modülleri buradan yönetebilirsiniz.
+                      </DialogDescription>
+                  </DialogHeader>
+                  {permissionsToUpdate && (
+                      <div className="grid gap-4 py-4">
+                          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="perm-dashboard">Dashboard Görüntüleme</Label>
+                                  <p className="text-xs text-muted-foreground">Ana paneli ve istatistikleri görebilir.</p>
+                              </div>
+                              <Switch
+                                  id="perm-dashboard"
+                                  checked={permissionsToUpdate.canViewDashboard}
+                                  onCheckedChange={(value) => handlePermissionChange('canViewDashboard', value)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="perm-location">Konum Takibi</Label>
+                                  <p className="text-xs text-muted-foreground">Şoförlerin anlık konumlarını haritada izleyebilir.</p>
+                              </div>
+                              <Switch
+                                  id="perm-location"
+                                  checked={permissionsToUpdate.canTrackLocations}
+                                  onCheckedChange={(value) => handlePermissionChange('canTrackLocations', value)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="perm-members">Üye Yönetimi</Label>
+                                  <p className="text-xs text-muted-foreground">Firma ve şoför hesaplarını yönetebilir.</p>
+                              </div>
+                              <Switch
+                                  id="perm-members"
+                                  checked={permissionsToUpdate.canManageMembers}
+                                  onCheckedChange={(value) => handlePermissionChange('canManageMembers', value)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                          <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                              <div className="space-y-0.5">
+                                  <Label htmlFor="perm-staff">Personel Yönetimi</Label>
+                                  <p className="text-xs text-muted-foreground">Yeni personel ekleyebilir ve yetkilerini düzenleyebilir.</p>
+                              </div>
+                              <Switch
+                                  id="perm-staff"
+                                  checked={permissionsToUpdate.canManageStaff}
+                                  onCheckedChange={(value) => handlePermissionChange('canManageStaff', value)}
+                                  disabled={isSubmitting}
+                              />
+                          </div>
+                      </div>
+                  )}
+                  <DialogFooter>
+                      <Button variant="outline" onClick={closeEditDialog}>İptal</Button>
+                      <Button onClick={handleSavePermissions} disabled={isSubmitting}>
+                          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          {isSubmitting ? 'Kaydediliyor...' : 'Yetkileri Kaydet'}
+                      </Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+      </div>
     </div>
   );
 }
