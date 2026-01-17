@@ -11,11 +11,6 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { initializeApp, getApps } from 'firebase-admin/app';
 
-// Initialize Firebase Admin SDK if not already initialized
-if (getApps().length === 0) {
-  initializeApp();
-}
-
 //-/////////////////////////////////////////////////////////////////
 // Create Staff Flow
 //-/////////////////////////////////////////////////////////////////
@@ -51,6 +46,11 @@ const createStaffFlow = ai.defineFlow(
     outputSchema: CreateStaffOutputSchema,
   },
   async ({ email, password, permissions }) => {
+    // Initialize Firebase Admin SDK if not already initialized
+    if (getApps().length === 0) {
+      initializeApp();
+    }
+
     try {
       // 1. Create user in Firebase Authentication
       const userRecord = await getAuth().createUser({
@@ -114,6 +114,11 @@ const deleteStaffFlow = ai.defineFlow(
     outputSchema: DeleteStaffOutputSchema,
   },
   async ({ userId }) => {
+    // Initialize Firebase Admin SDK if not already initialized
+    if (getApps().length === 0) {
+      initializeApp();
+    }
+
     try {
       // 1. Delete user from Firebase Authentication
       await getAuth().deleteUser(userId);
