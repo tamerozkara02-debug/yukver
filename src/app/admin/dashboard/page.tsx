@@ -1,16 +1,64 @@
 'use client';
 
+import { useMemo } from 'react';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, collectionGroup, query, where } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Building, Truck, Users, Briefcase } from "lucide-react";
-
-const stats = [
-    { title: "Toplam Firma", value: "1,254", icon: Building, change: "+20.1% from last month" },
-    { title: "Toplam Şoför", value: "5,832", icon: Truck, change: "+180.1% from last month" },
-    { title: "Aktif Yük Talebi", value: "452", icon: Briefcase, change: "+19% from last month" },
-    { title: "Personel Sayısı", value: "12", icon: Users, change: "+2 since last month" },
-];
+import { format } from 'date-fns';
 
 export default function AdminDashboardPage() {
+  const firestore = useFirestore();
+
+  // Query for all loads using a collection group query
+  const loadsQuery = useMemoFirebase(
+    () => (firestore ? collectionGroup(firestore, 'loads') : null),
+    [firestore]
+  );
+  const { data: loads, isLoading: isLoadingLoads } = useCollection(loadsQuery);
+  
+  // Query for all firms to map firmId to firm name
+  const firmsQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'firms') : null),
+    [firestore]
+  );
+  const { data: firms, isLoading: isLoadingFirms } = useCollection(firmsQuery);
+  
+  // Query for all drivers
+  const driversQuery = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'drivers') : null),
+    [firestore]
+  );
+  const { data: drivers, isLoading: isLoadingAllDrivers } = useCollection(driversQuery);
+
+
+  // Query for available drivers
+  const availableDriversQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'drivers'), where('isAvailable', '==', true)) : null),
+    [firestore]
+  );
+  const { data: availableDrivers, isLoading: isLoadingAvailableDrivers } = useCollection(availableDriversQuery);
+  
+  const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
+  const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
+  
+  const isLoading = isLoadingLoads || isLoadingFirms || isLoadingAllDrivers || isLoadingAvailableDrivers || isLoadingPersonel;
+  
+  const getFirmName = (firmId: string) => {
+    const firm = firms?.find(f => f.id === firmId);
+    return firm ? `${firm.firstName} ${firm.lastName}` : 'Bilinmeyen Firma';
+  }
+
+  // Update stats with live data
+  const liveStats = [
+    { title: "Toplam Firma", value: firms?.length.toString() ?? "0", icon: Building, change: "Kayıtlı firmalar" },
+    { title: "Toplam Şoför", value: drivers?.length.toString() ?? "0", icon: Truck, change: "Kayıtlı şoförler" },
+    { title: "Aktif Yük İlanı", value: loads?.length.toString() ?? "0", icon: Briefcase, change: "Yayındaki ilanlar" },
+    { title: "Personel Sayısı", value: personel?.length.toString() ?? "0", icon: Users, change: "Yönetim ekibi" },
+];
+
+
   return (
     <div className="space-y-6">
         <div>
@@ -18,7 +66,7 @@ export default function AdminDashboardPage() {
             <p className="text-muted-foreground">İşte platformunuzun genel bir özeti.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {stats.map((stat, index) => (
+            {liveStats.map((stat, index) => (
                 <Card key={index}>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
@@ -31,14 +79,79 @@ export default function AdminDashboardPage() {
                 </Card>
             ))}
         </div>
-        <div>
-            <h2 className="text-xl font-bold tracking-tight font-headline mt-8">Son Aktiviteler</h2>
-            <Card className="mt-4">
-                <CardContent className="pt-6">
-                    <p className="text-muted-foreground">Son aktivite verileri burada gösterilecek.</p>
-                </CardContent>
+        
+        <div className="grid gap-6 lg:grid-cols-2 mt-8">
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="w-5 h-5 text-primary" />
+                    Aktif Yük İlanları ({loads?.length || 0})
+                </CardTitle>
+                <CardDescription>Firmalar tarafından oluşturulan tüm aktif yük talepleri.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Firma</TableHead>
+                      <TableHead>Yük</TableHead>
+                      <TableHead>Güzergah</TableHead>
+                      <TableHead>Tarih</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
+                    {!isLoading && loads?.map((load: any) => (
+                      <TableRow key={load.id}>
+                        <TableCell className="font-medium">{getFirmName(load.firmId)}</TableCell>
+                        <TableCell>{load.loadType} - {load.tonnage} ton</TableCell>
+                        <TableCell>{load.originCity} → {load.destinationCity}</TableCell>
+                        <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                    {!isLoading && (!loads || loads.length === 0) && (
+                        <TableRow><TableCell colSpan={4} className="h-24 text-center">Aktif yük ilanı bulunmuyor.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
             </Card>
-        </div>
+
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Truck className="w-5 h-5 text-primary" />
+                    Müsait Şoförler ({availableDrivers?.length || 0})
+                </CardTitle>
+                <CardDescription>Şu anda yüke hazır olan şoförlerin listesi.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ad Soyad</TableHead>
+                      <TableHead>Anlık Şehir</TableHead>
+                      <TableHead>Araç Bilgisi</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading && <TableRow><TableCell colSpan={3} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
+                    {!isLoading && availableDrivers?.map((sofor: any) => (
+                      <TableRow key={sofor.id}>
+                        <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
+                        <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
+                        <TableCell>{sofor.vehicleType}</TableCell>
+                      </TableRow>
+                    ))}
+                    {!isLoading && (!availableDrivers || availableDrivers.length === 0) && (
+                        <TableRow><TableCell colSpan={3} className="h-24 text-center">Müsait şoför bulunmuyor.</TableCell></TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+      </div>
+
     </div>
   );
 }

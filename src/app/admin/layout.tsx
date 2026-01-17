@@ -92,14 +92,6 @@ export default function AdminLayout({
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/ilanlar")}>
-                <Link href="/admin/ilanlar">
-                  <Briefcase />
-                  <span>İlanlar</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
                 <Link href="/admin/konum-takibi">
                   <Map />
