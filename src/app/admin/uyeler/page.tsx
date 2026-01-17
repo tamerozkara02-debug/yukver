@@ -18,13 +18,15 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Phone, MessageCircle, Truck, Building } from "lucide-react"
+import { Phone, MessageCircle, Truck, Building, Loader2 } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
 import { collection } from "firebase/firestore"
+import { useAdmin } from "@/hooks/use-admin"
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const { adminData, isLoading: isAdminLoading } = useAdmin();
 
   const firmsCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
   const driversCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
@@ -32,7 +34,22 @@ export default function AdminUyelerPage() {
   const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
   const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
 
-  const isLoading = isUserLoading || isLoadingFirms || isLoadingDrivers;
+  const isLoading = isUserLoading || isLoadingFirms || isLoadingDrivers || isAdminLoading;
+
+  if (isLoading) {
+    return <div className="flex h-48 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!adminData?.permissions.canManageMembers) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4 text-center p-4">
+            <h1 className="text-2xl font-bold text-destructive">Erişim Reddedildi</h1>
+            <p className="text-muted-foreground">Bu sayfayı görüntüleme yetkiniz bulunmuyor.</p>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

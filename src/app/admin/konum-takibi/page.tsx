@@ -5,10 +5,13 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import { collection } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAdmin } from '@/hooks/use-admin';
+import { Loader2 } from 'lucide-react';
 
 export default function KonumTakibiPage() {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const { adminData, isLoading: isAdminLoading } = useAdmin();
 
   const driversCollection = useMemoFirebase(
     () => (firestore && user ? collection(firestore, 'drivers') : null),
@@ -20,7 +23,22 @@ export default function KonumTakibiPage() {
     return drivers?.filter(driver => driver.latitude && driver.longitude) || [];
   }, [drivers]);
 
-  const isLoading = isUserLoading || isLoadingDrivers;
+  const isLoading = isUserLoading || isLoadingDrivers || isAdminLoading;
+
+  if (isLoading) {
+    return <div className="flex h-48 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  if (!adminData?.permissions.canTrackLocations) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4 text-center p-4">
+            <h1 className="text-2xl font-bold text-destructive">Erişim Reddedildi</h1>
+            <p className="text-muted-foreground">Bu sayfayı görüntüleme yetkiniz bulunmuyor.</p>
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

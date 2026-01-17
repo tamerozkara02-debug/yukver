@@ -83,38 +83,46 @@ export default function AdminLayout({
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
-                <Link href="/admin/dashboard">
-                  <LayoutDashboard />
-                  <span>Dashboard</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
-                <Link href="/admin/konum-takibi">
-                  <Map />
-                  <span>Konum Takibi</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
-                <Link href="/admin/uyeler">
-                  <Users />
-                  <span>Üyeler</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
-                <Link href="/admin/personel">
-                  <UserCog />
-                  <span>Personel</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {adminData?.permissions.canViewDashboard && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
+                  <Link href="/admin/dashboard">
+                    <LayoutDashboard />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {adminData?.permissions.canTrackLocations && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
+                  <Link href="/admin/konum-takibi">
+                    <Map />
+                    <span>Konum Takibi</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+             {adminData?.permissions.canManageMembers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
+                  <Link href="/admin/uyeler">
+                    <Users />
+                    <span>Üyeler</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
+            {adminData?.permissions.canManageStaff && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
+                  <Link href="/admin/personel">
+                    <UserCog />
+                    <span>Personel</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
