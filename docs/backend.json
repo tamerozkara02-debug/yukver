@@ -13,6 +13,19 @@
           "type": "string",
           "description": "The admin's username, typically their email."
         },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phoneNumber": {
+          "type": "string"
+        },
+        "profilePicture": {
+          "type": "string",
+          "format": "uri"
+        },
         "permissions": {
             "type": "object",
             "properties": {

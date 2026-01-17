@@ -42,7 +42,7 @@ const roleDetails = {
         description: 'Yönetim paneline erişmek için giriş yapın.',
         registerLink: null,
         registerText: null,
-        dashboard: '/admin/dashboard',
+        dashboard: '/admin/portal',
     }
 }
 

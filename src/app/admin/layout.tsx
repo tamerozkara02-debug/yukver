@@ -34,7 +34,7 @@ export default function AdminLayout({
   const { isAdmin, adminData, isLoading: isAdminLoading } = useAdmin();
   const { toast } = useToast();
 
-  const isActive = (path: string) => pathname === path
+  const isActive = (path: string) => pathname.startsWith(path);
 
   const handleSignOut = async () => {
     if (auth) {
@@ -43,7 +43,6 @@ export default function AdminLayout({
     router.push('/giris');
   }
   
-  // If the user is on the login page, don't apply the admin layout or protection.
   if (pathname === '/admin/giris') {
     return <>{children}</>;
   }
@@ -85,33 +84,14 @@ export default function AdminLayout({
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
-                  <Link href="/admin/dashboard">
-                    {isFullAdmin ? <LayoutDashboard /> : <Briefcase />}
-                    <span>{isFullAdmin ? 'Dashboard' : 'Aktif İlanlar'}</span>
+                <SidebarMenuButton asChild isActive={isActive("/admin/portal")}>
+                  <Link href="/admin/portal">
+                    <LayoutDashboard />
+                    <span>Portal</span>
                   </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
-            {adminData?.permissions.canTrackLocations && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
-                  <Link href="/admin/konum-takibi">
-                    <Map />
-                    <span>Konum Takibi</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
-             {adminData?.permissions.canManageMembers && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
-                  <Link href="/admin/uyeler">
-                    <Users />
-                    <span>Üyeler</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+            
             {adminData?.permissions.canManageStaff && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
@@ -121,6 +101,34 @@ export default function AdminLayout({
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+            )}
+             {isFullAdmin && (
+              <>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
+                    <Link href="/admin/dashboard">
+                      <Briefcase />
+                      <span>Eski Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
+                    <Link href="/admin/konum-takibi">
+                      <Map />
+                      <span>Eski Konum Takibi</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                 <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
+                    <Link href="/admin/uyeler">
+                      <Users />
+                      <span>Eski Üyeler</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
             )}
           </SidebarMenu>
         </SidebarContent>

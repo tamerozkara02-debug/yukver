@@ -352,15 +352,17 @@ export default function AdminPersonelPage() {
               <Table>
               <TableHeader>
                   <TableRow>
-                  <TableHead>Kullanıcı Adı</TableHead>
+                  <TableHead>Ad Soyad</TableHead>
+                  <TableHead>Kullanıcı Adı (Email)</TableHead>
                   <TableHead>Yetkiler</TableHead>
                   <TableHead className="text-right">İşlemler</TableHead>
                   </TableRow>
               </TableHeader>
               <TableBody>
-                  {isLoadingPersonel && <TableRow><TableCell colSpan={3} className="text-center">Yükleniyor...</TableCell></TableRow>}
+                  {isLoadingPersonel && <TableRow><TableCell colSpan={4} className="text-center">Yükleniyor...</TableCell></TableRow>}
                   {!isLoadingPersonel && personel && personel.map((p: any) => (
                   <TableRow key={p.id}>
+                      <TableCell>{p.firstName || '-'} {p.lastName || ''}</TableCell>
                       <TableCell>{p.username}</TableCell>
                       <TableCell className="space-x-1">
                         {p.permissions?.canViewDashboard && <Badge variant="outline">Dashboard</Badge>}
@@ -381,7 +383,7 @@ export default function AdminPersonelPage() {
                   ))}
                   {!isLoadingPersonel && (!personel || personel.length === 0) && (
                       <TableRow>
-                          <TableCell colSpan={3} className="text-center">Henüz personel atanmamış.</TableCell>
+                          <TableCell colSpan={4} className="text-center">Henüz personel atanmamış.</TableCell>
                       </TableRow>
                   )}
               </TableBody>
