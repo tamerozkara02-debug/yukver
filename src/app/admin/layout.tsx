@@ -127,18 +127,10 @@ export default function AdminLayout({
              {isFullAdmin && (
               <>
                  <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/dashboard")}>
-                    <Link href="/admin/dashboard">
-                      <Briefcase />
-                      <span>Eski Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
                     <Link href="/admin/uyeler">
                       <Users />
-                      <span>Eski Üyeler</span>
+                      <span>Üyeler</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
