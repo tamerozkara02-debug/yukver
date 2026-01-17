@@ -253,9 +253,6 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
                     <Label htmlFor={`${initialRole}-password`}>Şifre</Label>
-                     <Button variant="link" type="button" onClick={handlePasswordReset} disabled={isLoading || !email} className="px-0 text-xs h-auto text-muted-foreground">
-                        Şifremi Unuttum
-                    </Button>
                 </div>
                 <Input id={`${initialRole}-password`} type="password" required 
                     value={password}
@@ -271,14 +268,25 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             >
             {isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
             </Button>
-            {details.registerLink && (
-            <div className="mt-4 text-center text-sm">
-                Hesabınız yok mu?{' '}
-                <Link href={details.registerLink} className="underline">
-                {details.registerText}
-                </Link>
+            <div className="mt-6 flex items-center justify-center gap-x-4 text-sm">
+                <Button
+                    variant="link"
+                    type="button"
+                    onClick={handlePasswordReset}
+                    disabled={isLoading || !email}
+                    className="px-0 font-semibold text-foreground hover:underline"
+                >
+                    Şifremi Unuttum
+                </Button>
+                {details.registerLink && (
+                    <>
+                        <span className="text-muted-foreground">|</span>
+                        <Link href={details.registerLink} className="font-semibold text-primary hover:underline">
+                            {details.registerText}
+                        </Link>
+                    </>
+                )}
             </div>
-            )}
         </CardContent>
     </Card>
   );
