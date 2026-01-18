@@ -136,8 +136,8 @@ function PortalPageContents() {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
                          <Avatar className="h-16 w-16">
-                            {avatarPreview ? (
-                                <AvatarImage src={avatarPreview} alt="Personel profili" />
+                            {currentAdminData?.profilePicture ? (
+                                <AvatarImage src={currentAdminData.profilePicture} alt="Personel profili" />
                             ) : adminAvatar ? (
                                 <AvatarImage src={adminAvatar.imageUrl} data-ai-hint={adminAvatar.imageHint} />
                             ) : null}
