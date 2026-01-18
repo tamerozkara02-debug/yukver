@@ -5,7 +5,7 @@ import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@
 import { collection, collectionGroup, query, where, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Loader2, Edit, Save, Camera, Phone, MessageCircle, Building, Truck, Users } from "lucide-react";
+import { Briefcase, Loader2, Edit, Save, Camera, Phone, MessageCircle, Building, Truck, Users, MapPin } from "lucide-react";
 import { format } from 'date-fns';
 import { useAdmin } from '@/hooks/use-admin';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,6 +63,10 @@ function PortalPageContents() {
       { title: "Aktif Yük İlanı", value: loads?.length.toString() ?? "0", icon: Briefcase, change: "Yayındaki ilanlar" },
       { title: "Personel Sayısı", value: personel?.length.toString() ?? "0", icon: Users, change: "Yönetim ekibi" },
     ], [firms, allDrivers, loads, personel]);
+
+    const activeDrivers = useMemo(() => {
+      return allDrivers?.filter(driver => driver.latitude && driver.longitude) || [];
+    }, [allDrivers]);
 
     const filteredLoads = useMemo(() => {
       if (appliedCity === 'all') return loads;
@@ -136,8 +140,8 @@ function PortalPageContents() {
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
                          <Avatar className="h-16 w-16">
-                            {currentAdminData?.profilePicture ? (
-                                <AvatarImage src={currentAdminData.profilePicture} alt="Personel profili" />
+                            {avatarPreview ? (
+                                <AvatarImage src={avatarPreview} alt="Personel profili" />
                             ) : adminAvatar ? (
                                 <AvatarImage src={adminAvatar.imageUrl} data-ai-hint={adminAvatar.imageHint} />
                             ) : null}
@@ -220,6 +224,32 @@ function PortalPageContents() {
                 </div>
               )
             )}
+            
+            {adminData?.permissions.canTrackLocations && (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <MapPin className="w-5 h-5 text-primary" />
+                            Canlı Konum Takibi
+                        </CardTitle>
+                        <CardDescription>
+                            {isLoading
+                            ? 'Aktif şoför konumları yükleniyor...'
+                            : `${activeDrivers.length} aktif şoför konumunu paylaşıyor.`}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0" style={{ height: '400px' }}>
+                        {isLoading ? (
+                            <Skeleton className="w-full h-full rounded-b-lg" />
+                        ) : (
+                            <div className="flex items-center justify-center w-full h-full bg-muted rounded-b-lg">
+                            <p className="text-muted-foreground">Harita özelliği geçici olarak devre dışıdır.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
 
             <div className="space-y-4">
               <div className="flex items-center gap-4 p-4 bg-card border rounded-lg">
