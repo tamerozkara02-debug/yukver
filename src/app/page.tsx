@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Truck, Building, ArrowRight, User, LogIn, Briefcase, UserCog } from 'lucide-react';
+import { Truck, Building, ArrowRight, User, LogIn, Briefcase, UserCog, FilePenLine } from 'lucide-react';
 import Image from 'next/image';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { MacazekaChat } from '@/components/macazeka-chat';
@@ -11,6 +11,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 export default function Home() {
   const heroImage = placeholderImages.find(p => p.id === "hero-logistics");
@@ -41,6 +43,21 @@ export default function Home() {
       </header>
 
       <main className="flex-grow">
+        <section className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <Alert className="bg-blue-50 border-blue-200 text-blue-900">
+                <FilePenLine className="h-4 w-4 !text-blue-900" />
+                <AlertTitle className="font-bold">MaçaZeka'yı Aktif Etmek İçin Son Adım!</AlertTitle>
+                <AlertDescription>
+                    <ol className="list-decimal list-inside space-y-1 mt-2">
+                        <li>Sol taraftaki dosya listesinden <strong>src</strong> klasörünü açın.</li>
+                        <li>Onun içindeki <strong>ai</strong> klasörünü açın.</li>
+                        <li><strong>genkit.ts</strong> dosyasına tıklayın.</li>
+                        <li>Dosyanın içindeki talimatları izleyerek API anahtarınızı yapıştırın.</li>
+                    </ol>
+                </AlertDescription>
+            </Alert>
+        </section>
+        
         <section className="relative py-20 md:py-32 bg-card">
             {heroImage && (
                  <Image
