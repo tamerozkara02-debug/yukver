@@ -28,11 +28,18 @@ const macazekaFlow = ai.defineFlow(
     outputSchema: MacazekaOutputSchema,
   },
   async (prompt) => {
-    const { text } = await ai.generate({
-        prompt: `Senin adın MaçaZeka ve sen bir lojistik uzmanısın. Yalnızca lojistik, nakliye, taşımacılık ve ilgili konulardaki soruları yanıtla. Başka herhangi bir konuda soru sorulursa, kibarca sadece lojistik konularında yardımcı olabileceğini belirt.
+    try {
+        const response = await ai.generate({
+            prompt: `Senin adın MaçaZeka ve sen bir lojistik uzmanısın. Yalnızca lojistik, nakliye, taşımacılık ve ilgili konulardaki soruları yanıtla. Başka herhangi bir konuda soru sorulursa, kibarca sadece lojistik konularında yardımcı olabileceğini belirt.
 
 Kullanıcının sorusu: ${prompt}`
-    });
-    return text ?? "Üzgünüm, şu an bir cevap veremiyorum.";
+        });
+        return response.text ?? "Üzgünüm, modelden bir cevap alamadım.";
+    } catch (e: any) {
+        console.error("MaçaZeka flow error:", e);
+        // Hata mesajını kullanıcıya göstermek için döndür.
+        // Bu, API anahtarı veya yapılandırma sorunlarını teşhis etmeye yardımcı olabilir.
+        return `Bir hata oluştu: ${e.message}`;
+    }
   }
 );
