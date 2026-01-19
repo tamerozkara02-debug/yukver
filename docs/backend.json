@@ -68,6 +68,7 @@
             "vehicleType": { "type": "string" },
             "vehiclePlate": { "type": "string" },
             "profilePicture": { "type": "string", "format": "uri" },
+            "vehiclePicture": { "type": "string", "format": "uri" },
             "currentCity": { "type": "string" },
             "isAvailable": { "type": "boolean" },
             "latitude": { "type": "number" },

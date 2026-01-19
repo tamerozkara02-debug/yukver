@@ -29,6 +29,7 @@ export default function SoforDashboard() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const vehicleFileInputRef = useRef<HTMLInputElement>(null);
   const watchIdRef = useRef<number | null>(null);
 
   const driverDocRef = useMemoFirebase(
@@ -56,6 +57,8 @@ export default function SoforDashboard() {
     vehiclePlate: '',
   });
   const [profileCompletionAlert, setProfileCompletionAlert] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [vehicleImagePreview, setVehicleImagePreview] = useState<string | null>(null);
 
   // State for review form
   const [allFirms, setAllFirms] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
@@ -96,6 +99,8 @@ export default function SoforDashboard() {
           vehicleType: driverData.vehicleType || '',
           vehiclePlate: driverData.vehiclePlate || '',
       });
+      setAvatarPreview(driverData.profilePicture || null);
+      setVehicleImagePreview(driverData.vehiclePicture || null);
       // Sync tracking state with DB if location is present
       if (driverData.latitude && driverData.longitude) {
           setIsTracking(true);
@@ -172,8 +177,8 @@ export default function SoforDashboard() {
     if (event.target.files && event.target.files[0] && driverDocRef) {
       const file = event.target.files[0];
       const previewUrl = URL.createObjectURL(file);
+      setAvatarPreview(previewUrl);
       // In a real app, you'd upload this file to Firebase Storage and save the URL.
-      // For this example, we'll just save the temporary blob URL.
       try {
         await updateDoc(driverDocRef, {
           profilePicture: previewUrl
@@ -182,6 +187,7 @@ export default function SoforDashboard() {
       } catch (error) {
         toast({ variant: 'destructive', title: 'Hata', description: 'Profil resmi güncellenemedi.' });
         console.error("Avatar update error:", error);
+        setAvatarPreview(driverData?.profilePicture || null);
       }
     }
   };
@@ -189,6 +195,29 @@ export default function SoforDashboard() {
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
+  
+  const handleVehicleImageClick = () => {
+    vehicleFileInputRef.current?.click();
+  };
+
+  const handleVehicleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      if (event.target.files && event.target.files[0] && driverDocRef) {
+        const file = event.target.files[0];
+        const previewUrl = URL.createObjectURL(file);
+        setVehicleImagePreview(previewUrl);
+        try {
+          await updateDoc(driverDocRef, {
+            vehiclePicture: previewUrl
+          });
+          toast({ title: 'Başarılı', description: 'Araç resmi güncellendi.' });
+        } catch (error) {
+          toast({ variant: 'destructive', title: 'Hata', description: 'Araç resmi güncellenemedi.' });
+          console.error("Vehicle image update error:", error);
+          setVehicleImagePreview(driverData?.vehiclePicture || null);
+        }
+      }
+  };
+
 
   const stopTracking = () => {
     if (watchIdRef.current !== null) {
@@ -380,8 +409,8 @@ export default function SoforDashboard() {
           <div className="flex items-center gap-3">
              <div className="relative group">
                 <Avatar className="h-12 w-12">
-                  {driverData?.profilePicture ? (
-                    <AvatarImage src={driverData.profilePicture} />
+                   {avatarPreview ? (
+                    <AvatarImage src={avatarPreview} alt="Şoför Profili" />
                   ) : (
                     driverAvatar && <AvatarImage src={driverAvatar.imageUrl} data-ai-hint={driverAvatar.imageHint} />
                   )}
@@ -623,18 +652,31 @@ export default function SoforDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {vehicleImage && (
-                  <div className="rounded-lg overflow-hidden mb-4">
+                <div className="relative group rounded-lg overflow-hidden mb-4">
                     <Image
-                      src={vehicleImage.imageUrl}
+                      src={vehicleImagePreview || vehicleImage?.imageUrl || 'https://picsum.photos/seed/vehicle/400/300'}
                       alt="Araç Profili"
                       width={400}
                       height={300}
                       className="w-full h-auto object-cover"
-                      data-ai-hint={vehicleImage.imageHint}
+                      data-ai-hint={vehicleImage?.imageHint || 'truck'}
                     />
-                  </div>
-                )}
+                     <input
+                      type="file"
+                      ref={vehicleFileInputRef}
+                      onChange={handleVehicleImageChange}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    <div 
+                      className="absolute inset-0 w-full h-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity"
+                      onClick={handleVehicleImageClick}
+                      role="button"
+                      aria-label="Araç resmini değiştir"
+                    >
+                      <Camera className="h-8 w-8 text-white"/>
+                    </div>
+                </div>
                 <p className="text-sm">
                   <strong className="text-muted-foreground w-24 inline-block">Araç Tipi:</strong>{' '}
                   {driverData?.vehicleType}
