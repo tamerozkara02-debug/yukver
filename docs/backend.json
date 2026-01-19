@@ -111,6 +111,19 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["reviewerId", "reviewerRole", "revieweeId", "revieweeRole", "rating", "comment", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Represents a direct message between two users.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string", "description": "UID of the message sender." },
+        "receiverId": { "type": "string", "description": "UID of the message receiver." },
+        "content": { "type": "string", "description": "The text content of the message." },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "participantIds": { "type": "array", "items": { "type": "string" }, "description": "An array containing the UIDs of both the sender and receiver."}
+      },
+      "required": ["senderId", "receiverId", "content", "createdAt", "participantIds"]
     }
   },
   "auth": {
@@ -146,6 +159,11 @@
             "path": "/reviews/{reviewId}",
             "schema": { "$ref": "#/entities/Review" },
             "description": "Stores all reviews between users."
+        },
+        {
+          "path": "/messages/{messageId}",
+          "schema": { "$ref": "#/entities/Message" },
+          "description": "Stores all direct messages between users."
         }
     ]
   }
