@@ -36,7 +36,7 @@ import { firebaseConfig } from '@/firebase/config';
 const defaultPermissions: AdminPermissions = {
     canViewDashboard: true,
     canTrackLocations: false,
-    canManageMembers: false,
+    canManageMembers: true,
     canManageStaff: false,
 };
 
