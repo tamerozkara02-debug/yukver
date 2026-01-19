@@ -119,17 +119,7 @@ export default function AdminLayout({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-
-            {adminData?.permissions.canManageStaff && (
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/admin/personel")}>
-                  <Link href="/admin/personel">
-                    <UserCog />
-                    <span>Personel</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
+            
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
                 <Link href="/admin/uyeler">
