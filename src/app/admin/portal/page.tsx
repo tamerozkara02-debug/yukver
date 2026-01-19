@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { turkishCities } from '@/lib/cities';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 function PortalPageContents() {
     const firestore = useFirestore();
@@ -144,222 +145,231 @@ function PortalPageContents() {
     };
 
     return (
-        <div className="space-y-6">
-             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="relative group">
-                            <Avatar className="h-16 w-16">
-                                {avatarPreview ? (
-                                    <AvatarImage src={avatarPreview} alt="Personel profili" />
-                                ) : adminAvatar ? (
-                                    <AvatarImage src={adminAvatar.imageUrl} data-ai-hint={adminAvatar.imageHint} />
-                                ) : null}
-                                <AvatarFallback>
-                                    {currentAdminData?.firstName?.[0] || 'P'}
-                                    {currentAdminData?.lastName?.[0] || ''}
-                                </AvatarFallback>
-                            </Avatar>
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleAvatarChange}
-                                className="hidden"
-                                accept="image/*"
-                            />
-                            <Button
-                                type="button"
-                                size="icon"
-                                className="absolute inset-0 w-full h-full bg-black/50 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center cursor-pointer transition-opacity"
-                                onClick={handleAvatarClick}
-                            >
-                                <Camera className="h-6 w-6 text-white"/>
-                                <span className="sr-only">Profil resmini değiştir</span>
-                            </Button>
+        <TooltipProvider>
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="relative group">
+                                <Avatar className="h-16 w-16">
+                                    {avatarPreview ? (
+                                        <AvatarImage src={avatarPreview} alt="Personel profili" />
+                                    ) : adminAvatar ? (
+                                        <AvatarImage src={adminAvatar.imageUrl} data-ai-hint={adminAvatar.imageHint} />
+                                    ) : null}
+                                    <AvatarFallback>
+                                        {currentAdminData?.firstName?.[0] || 'P'}
+                                        {currentAdminData?.lastName?.[0] || ''}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleAvatarChange}
+                                    className="hidden"
+                                    accept="image/*"
+                                />
+                                <Button
+                                    type="button"
+                                    size="icon"
+                                    className="absolute inset-0 w-full h-full bg-black/50 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center cursor-pointer transition-opacity"
+                                    onClick={handleAvatarClick}
+                                >
+                                    <Camera className="h-6 w-6 text-white"/>
+                                    <span className="sr-only">Profil resmini değiştir</span>
+                                </Button>
+                            </div>
+                            <div>
+                                <CardTitle className="font-headline text-2xl">
+                                    Hoş Geldiniz, {currentAdminData?.firstName || adminData?.username || 'Personel'}!
+                                </CardTitle>
+                                <CardDescription>
+                                    Buradan tüm operasyonel işlemleri yönetebilirsiniz.
+                                </CardDescription>
+                            </div>
                         </div>
-                        <div>
-                             <CardTitle className="font-headline text-2xl">
-                                Hoş Geldiniz, {currentAdminData?.firstName || adminData?.username || 'Personel'}!
+                        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Profili Düzenle</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Profil Bilgilerini Düzenle</DialogTitle>
+                                    <DialogDescription>
+                                        Profil bilgilerinizi güncelleyin.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><Label htmlFor="firstName">Ad</Label><Input id="firstName" name="firstName" value={editData.firstName} onChange={handleEditInputChange} /></div>
+                                        <div><Label htmlFor="lastName">Soyad</Label><Input id="lastName" name="lastName" value={editData.lastName} onChange={handleEditInputChange} /></div>
+                                    </div>
+                                    <div><Label htmlFor="phoneNumber">Telefon Numarası</Label><Input id="phoneNumber" name="phoneNumber" type="tel" value={editData.phoneNumber} onChange={handleEditInputChange} placeholder="+90 (___) ___ ____" /></div>
+                                </div>
+                                <DialogFooter>
+                                    <Button onClick={handleProfileUpdate}><Save className="mr-2 h-4 w-4" /> Kaydet</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </CardHeader>
+                </Card>
+
+                {adminData?.permissions.canViewDashboard && (
+                isLoading ? (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[109px]" />)}
+                    </div>
+                ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {liveStats.map((stat, index) => (
+                            <Card key={index}>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                                    <stat.icon className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">{stat.value}</div>
+                                    <p className="text-xs text-muted-foreground">{stat.change}</p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )
+                )}
+                
+                {adminData?.permissions.canTrackLocations && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <MapPin className="w-5 h-5 text-primary" />
+                                Canlı Konum Takibi
                             </CardTitle>
                             <CardDescription>
-                                Buradan tüm operasyonel işlemleri yönetebilirsiniz.
+                                {isLoading
+                                ? 'Aktif şoför konumları yükleniyor...'
+                                : `${activeDrivers.length} aktif şoför konumunu paylaşıyor.`}
                             </CardDescription>
-                        </div>
-                    </div>
-                     <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline"><Edit className="mr-2 h-4 w-4" /> Profili Düzenle</Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Profil Bilgilerini Düzenle</DialogTitle>
-                                <DialogDescription>
-                                    Profil bilgilerinizi güncelleyin.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><Label htmlFor="firstName">Ad</Label><Input id="firstName" name="firstName" value={editData.firstName} onChange={handleEditInputChange} /></div>
-                                    <div><Label htmlFor="lastName">Soyad</Label><Input id="lastName" name="lastName" value={editData.lastName} onChange={handleEditInputChange} /></div>
+                        </CardHeader>
+                        <CardContent className="p-0" style={{ height: '400px' }}>
+                            {isLoading ? (
+                                <Skeleton className="w-full h-full rounded-b-lg" />
+                            ) : (
+                                <div className="flex items-center justify-center w-full h-full bg-muted rounded-b-lg">
+                                <p className="text-muted-foreground">Harita özelliği geçici olarak devre dışıdır.</p>
                                 </div>
-                                <div><Label htmlFor="phoneNumber">Telefon Numarası</Label><Input id="phoneNumber" name="phoneNumber" type="tel" value={editData.phoneNumber} onChange={handleEditInputChange} placeholder="+90 (___) ___ ____" /></div>
-                            </div>
-                            <DialogFooter>
-                                <Button onClick={handleProfileUpdate}><Save className="mr-2 h-4 w-4" /> Kaydet</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </CardHeader>
-            </Card>
-
-            {adminData?.permissions.canViewDashboard && (
-              isLoading ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-[109px]" />)}
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {liveStats.map((stat, index) => (
-                        <Card key={index}>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                                <stat.icon className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stat.value}</div>
-                                <p className="text-xs text-muted-foreground">{stat.change}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-              )
-            )}
-            
-            {adminData?.permissions.canTrackLocations && (
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <MapPin className="w-5 h-5 text-primary" />
-                            Canlı Konum Takibi
-                        </CardTitle>
-                        <CardDescription>
-                            {isLoading
-                            ? 'Aktif şoför konumları yükleniyor...'
-                            : `${activeDrivers.length} aktif şoför konumunu paylaşıyor.`}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-0" style={{ height: '400px' }}>
-                        {isLoading ? (
-                            <Skeleton className="w-full h-full rounded-b-lg" />
-                        ) : (
-                            <div className="flex items-center justify-center w-full h-full bg-muted rounded-b-lg">
-                            <p className="text-muted-foreground">Harita özelliği geçici olarak devre dışıdır.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-
-            <div className="space-y-4">
-              <div className="flex items-center gap-4 p-4 bg-card border rounded-lg">
-                  <Label htmlFor="city-filter" className="text-sm font-medium">Şehre Göre Filtrele:</Label>
-                  <Select value={selectedCity} onValueChange={setSelectedCity}>
-                    <SelectTrigger id="city-filter" className="w-auto min-w-[200px]"><SelectValue placeholder="Şehir seçin..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tüm Şehirler</SelectItem>
-                      {turkishCities.map(city => (<SelectItem key={city} value={city}>{city}</SelectItem>))}
-                    </SelectContent>
-                  </Select>
-                  <Button onClick={() => setAppliedCity(selectedCity)}>Filtrele</Button>
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                  <Card className="lg:col-span-1">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><Briefcase className="w-5 h-5 text-primary" /> Aktif Yük İlanları ({filteredLoads?.length || 0})</CardTitle>
-                      <CardDescription>Firmalar tarafından oluşturulan tüm aktif yük talepleri.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                       <Table>
-                        <TableHeader><TableRow><TableHead>Firma</TableHead><TableHead>Yük</TableHead><TableHead>Güzergah</TableHead><TableHead>Tarih</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                          {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
-                          {!isLoading && filteredLoads?.map((load: any) => (
-                            <TableRow key={load.id}>
-                              <TableCell className="font-medium">{getFirmName(load.firmId)}</TableCell>
-                              <TableCell>{load.loadType} - {load.tonnage} ton</TableCell>
-                              <TableCell>{load.originCity} → {load.destinationCity}</TableCell>
-                              <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
-                            </TableRow>
-                          ))}
-                          {!isLoading && (!filteredLoads || filteredLoads.length === 0) && (
-                              <TableRow><TableCell colSpan={4} className="h-24 text-center">{appliedCity === 'all' ? 'Aktif yük ilanı bulunmuyor.' : 'Bu şehirde aktif yük ilanı bulunmuyor.'}</TableCell></TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="lg:col-span-1">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Truck className="w-5 h-5 text-primary" />
-                            Şoförler ({filteredAllDrivers?.length || 0})
-                        </CardTitle>
-                        <CardDescription>Platformdaki tüm kayıtlı şoförler.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Ad Soyad</TableHead>
-                            <TableHead>Anlık Şehir</TableHead>
-                            <TableHead>Durum</TableHead>
-                            <TableHead className="text-right">Konum</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
-                            {!isLoading && filteredAllDrivers?.map((sofor: any) => (
-                            <TableRow key={sofor.id}>
-                                <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
-                                <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
-                                <TableCell>
-                                <Badge variant={sofor.isAvailable ? 'default' : 'destructive'} className={sofor.isAvailable ? 'bg-green-600' : 'bg-red-600'}>
-                                    {sofor.isAvailable ? 'Boşta' : 'Dolu'}
-                                </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                {sofor.latitude && sofor.longitude ? (
-                                    <a
-                                    href={`https://www.google.com/maps/search/?api=1&query=${sofor.latitude},${sofor.longitude}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'h-8 w-8')}
-                                    >
-                                    <MapPin className="h-4 w-4" />
-                                    </a>
-                                ) : (
-                                    <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-                                    <MapPin className="h-4 w-4" />
-                                    </Button>
-                                )}
-                                </TableCell>
-                            </TableRow>
-                            ))}
-                            {!isLoading && (!filteredAllDrivers || filteredAllDrivers.length === 0) && (
-                                <TableRow><TableCell colSpan={4} className="h-24 text-center">
-                                    {appliedCity === 'all' ? 'Kayıtlı şoför bulunmuyor.' : 'Bu şehirde kayıtlı şoför bulunmuyor.'}
-                                </TableCell></TableRow>
                             )}
-                        </TableBody>
+                        </CardContent>
+                    </Card>
+                )}
+
+
+                <div className="space-y-4">
+                <div className="flex items-center gap-4 p-4 bg-card border rounded-lg">
+                    <Label htmlFor="city-filter" className="text-sm font-medium">Şehre Göre Filtrele:</Label>
+                    <Select value={selectedCity} onValueChange={setSelectedCity}>
+                        <SelectTrigger id="city-filter" className="w-auto min-w-[200px]"><SelectValue placeholder="Şehir seçin..." /></SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="all">Tüm Şehirler</SelectItem>
+                        {turkishCities.map(city => (<SelectItem key={city} value={city}>{city}</SelectItem>))}
+                        </SelectContent>
+                    </Select>
+                    <Button onClick={() => setAppliedCity(selectedCity)}>Filtrele</Button>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-2">
+                    <Card className="lg:col-span-1">
+                        <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Briefcase className="w-5 h-5 text-primary" /> Aktif Yük İlanları ({filteredLoads?.length || 0})</CardTitle>
+                        <CardDescription>Firmalar tarafından oluşturulan tüm aktif yük talepleri.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                        <Table>
+                            <TableHeader><TableRow><TableHead>Firma</TableHead><TableHead>Yük</TableHead><TableHead>Güzergah</TableHead><TableHead>Tarih</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                            {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
+                            {!isLoading && filteredLoads?.map((load: any) => (
+                                <TableRow key={load.id}>
+                                <TableCell className="font-medium">{getFirmName(load.firmId)}</TableCell>
+                                <TableCell>{load.loadType} - {load.tonnage} ton</TableCell>
+                                <TableCell>{load.originCity} → {load.destinationCity}</TableCell>
+                                <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
+                                </TableRow>
+                            ))}
+                            {!isLoading && (!filteredLoads || filteredLoads.length === 0) && (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center">{appliedCity === 'all' ? 'Aktif yük ilanı bulunmuyor.' : 'Bu şehirde aktif yük ilanı bulunmuyor.'}</TableCell></TableRow>
+                            )}
+                            </TableBody>
                         </Table>
-                    </CardContent>
-                  </Card>
-              </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="lg:col-span-1">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Truck className="w-5 h-5 text-primary" />
+                                Şoförler ({filteredAllDrivers?.length || 0})
+                            </CardTitle>
+                            <CardDescription>Platformdaki tüm kayıtlı şoförler.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                            <TableHeader>
+                                <TableRow>
+                                <TableHead>Ad Soyad</TableHead>
+                                <TableHead>Anlık Şehir</TableHead>
+                                <TableHead>Durum</TableHead>
+                                <TableHead className="text-right">Konum</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
+                                {!isLoading && filteredAllDrivers?.map((sofor: any) => (
+                                <TableRow key={sofor.id}>
+                                    <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
+                                    <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
+                                    <TableCell>
+                                    <Badge variant={sofor.isAvailable ? 'default' : 'destructive'} className={sofor.isAvailable ? 'bg-green-600' : 'bg-red-600'}>
+                                        {sofor.isAvailable ? 'Boşta' : 'Dolu'}
+                                    </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                    {sofor.latitude && sofor.longitude ? (
+                                        <a
+                                        href={`https://www.google.com/maps/search/?api=1&query=${sofor.latitude},${sofor.longitude}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'h-8 w-8')}
+                                        >
+                                        <MapPin className="h-4 w-4" />
+                                        </a>
+                                    ) : (
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+                                                <MapPin className="h-4 w-4" />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>Konum bilgisi mevcut değil.</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    )}
+                                    </TableCell>
+                                </TableRow>
+                                ))}
+                                {!isLoading && (!filteredAllDrivers || filteredAllDrivers.length === 0) && (
+                                    <TableRow><TableCell colSpan={4} className="h-24 text-center">
+                                        {appliedCity === 'all' ? 'Kayıtlı şoför bulunmuyor.' : 'Bu şehirde kayıtlı şoför bulunmuyor.'}
+                                    </TableCell></TableRow>
+                                )}
+                            </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </div>
+                </div>
             </div>
-        </div>
+        </TooltipProvider>
     );
 }
 
