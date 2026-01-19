@@ -29,9 +29,9 @@ export default function MesajlarPage() {
     // Fetch all messages for the current user
     const messagesQuery = useMemoFirebase(() => {
       if (!firestore || !user) return null;
+      // Temporarily simplifying query for debugging permissions
       return query(
         collection(firestore, 'messages'),
-        where('participantIds', 'array-contains', user.uid),
         orderBy('createdAt', 'asc')
       );
     }, [firestore, user]);
@@ -40,6 +40,7 @@ export default function MesajlarPage() {
     // Filter messages for the selected chat
     const chatMessages = useMemo(() => {
         if (!allMessages || !selectedPersonel) return [];
+        // Since we fetch all messages now, we have to filter them on the client
         return allMessages.filter(msg => 
             (msg.senderId === user?.uid && msg.receiverId === selectedPersonel.id) ||
             (msg.senderId === selectedPersonel.id && msg.receiverId === user?.uid)
@@ -83,6 +84,38 @@ export default function MesajlarPage() {
         return personelList.filter(p => p.id !== user.uid);
     }, [personelList, user]);
 
+    // Client-side filtering logic because the 'where' clause was removed from the query
+    const conversations = useMemo(() => {
+        if (!allMessages || !personelList || !user) return [];
+
+        const otherUsers = personelList.filter(p => p.id !== user.uid);
+        const latestMessages: Record<string, any> = {};
+
+        // Find the last message for each conversation
+        for (const msg of allMessages) {
+            const otherParticipantId = msg.participantIds.find((pId: string) => pId !== user.uid);
+            if (otherParticipantId) {
+                if (!latestMessages[otherParticipantId] || msg.createdAt > latestMessages[otherParticipantId].createdAt) {
+                    latestMessages[otherParticipantId] = msg;
+                }
+            }
+        }
+
+        // Map other users to their last message
+        return otherUsers.map(p => ({
+            personel: p,
+            lastMessage: latestMessages[p.id] || null
+        })).sort((a, b) => {
+            if (!a.lastMessage) return 1;
+            if (!b.lastMessage) return -1;
+            if (!a.lastMessage.createdAt) return 1;
+            if (!b.lastMessage.createdAt) return -1;
+            return b.lastMessage.createdAt.toMillis() - a.lastMessage.createdAt.toMillis();
+        });
+
+    }, [allMessages, personelList, user]);
+
+
     return (
         <div className="h-[calc(100vh-theme(spacing.28))] flex gap-6">
             <Card className="w-1/3 flex flex-col">
@@ -97,12 +130,12 @@ export default function MesajlarPage() {
                             </div>
                         ) : (
                             <div className="space-y-2">
-                                {otherPersonel.map((p: any) => (
+                                {conversations.map(({ personel: p, lastMessage }) => (
                                     <Button
                                         key={p.id}
                                         variant="ghost"
                                         className={cn(
-                                            "w-full justify-start gap-3 p-2 h-auto",
+                                            "w-full justify-start gap-3 p-2 h-auto text-left",
                                             selectedPersonel?.id === p.id && "bg-accent"
                                         )}
                                         onClick={() => setSelectedPersonel(p)}
@@ -114,9 +147,11 @@ export default function MesajlarPage() {
                                                 {p.lastName?.[0] || ''}
                                             </AvatarFallback>
                                         </Avatar>
-                                        <div className="text-left">
-                                            <p className="font-semibold text-sm">{p.firstName} {p.lastName}</p>
-                                            <p className="text-xs text-muted-foreground">{p.username}</p>
+                                        <div className="flex-1 overflow-hidden">
+                                            <p className="font-semibold text-sm truncate">{p.firstName} {p.lastName}</p>
+                                            <p className="text-xs text-muted-foreground truncate">
+                                                {lastMessage ? lastMessage.content : 'Henüz mesaj yok'}
+                                            </p>
                                         </div>
                                     </Button>
                                 ))}
@@ -145,7 +180,7 @@ export default function MesajlarPage() {
                         
                         <ScrollArea className="flex-1" ref={scrollAreaRef}>
                             <div className="p-4 space-y-4">
-                                {isLoadingMessages && <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div> }
+                                {(isLoadingMessages || isLoadingPersonel) && <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin"/></div> }
                                 {chatMessages.map((msg, index) => (
                                     <div key={index} className={cn("flex items-end gap-2", msg.senderId === user?.uid ? "justify-end" : "justify-start")}>
                                         {msg.senderId !== user?.uid && (
@@ -172,6 +207,11 @@ export default function MesajlarPage() {
                                         )}
                                     </div>
                                 ))}
+                                {!isLoadingMessages && chatMessages.length === 0 && (
+                                     <div className="text-center text-sm text-muted-foreground p-8">
+                                        Bu sohbet için henüz mesaj yok.
+                                    </div>
+                                )}
                             </div>
                         </ScrollArea>
                         
