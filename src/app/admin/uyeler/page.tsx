@@ -29,7 +29,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
-const CLAIM_DURATION_MINUTES = 15;
+const CLAIM_DURATION_MINUTES = 30;
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
@@ -61,7 +61,7 @@ export default function AdminUyelerPage() {
   const getStaffName = (staffId: string) => {
     if (!personel) return 'Bilinmeyen Personel';
     const staffMember = personel.find(p => p.id === staffId);
-    return staffMember ? `${staffMember.firstName} ${staffMember.lastName?.[0] || ''}.` : 'Bilinmeyen Personel';
+    return staffMember ? `${staffMember.firstName} ${staffMember.lastName?.[0] || ''}.` : 'Bilinmeyen';
   }
 
   const firmCities = useMemo(() => {
@@ -100,7 +100,7 @@ export default function AdminUyelerPage() {
             claimedByStaffId: user.uid,
             claimedAt: serverTimestamp(),
         });
-        toast({ title: "Firma İşleme Alındı", description: "Bu firma 15 dakikalığına sizin tarafınızdan yönetilecek." });
+        toast({ title: "Firma İşleme Alındı", description: `Bu firma ${CLAIM_DURATION_MINUTES} dakikalığına sizin tarafınızdan yönetilecek.` });
     } catch (error) {
         console.error("Error claiming firm:", error);
         toast({ variant: "destructive", title: "Hata", description: "Firma işleme alınamadı." });
@@ -222,13 +222,11 @@ export default function AdminUyelerPage() {
                           <TableCell>
                             {isClaimed ? (
                                 isClaimedByCurrentUser ? (
-                                    <div className="flex items-center gap-2">
-                                        <Button size="sm" variant="outline" onClick={() => handleReleaseFirm(firma.id)}>Bırak</Button>
-                                    </div>
+                                    <Button size="sm" variant="outline" onClick={() => handleReleaseFirm(firma.id)}>Bırak</Button>
                                 ) : (
-                                    <div className="flex flex-col items-start gap-1 text-xs">
-                                        <Badge variant="destructive">İşlemde</Badge>
-                                        <span className="text-muted-foreground">{getStaffName(firma.claimedByStaffId)}</span>
+                                    <div className="flex items-center gap-2">
+                                        <Button size="sm" disabled>İşleme Alınmış</Button>
+                                        <span className="text-xs text-muted-foreground">({getStaffName(firma.claimedByStaffId)})</span>
                                     </div>
                                 )
                             ) : (
