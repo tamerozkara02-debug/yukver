@@ -22,11 +22,11 @@ service cloud.firestore {
     // Collection Rules
     //-//////////////////////////////////////////////////
 
-    // FIRMS: Public read, only owner can write/update their own document
+    // FIRMS: Public read, only owner or an admin can write/update their own document
     match /firms/{firmId} {
       allow get, list: if request.auth != null;
       allow create: if isOwner(firmId);
-      allow update: if isOwner(firmId);
+      allow update: if isOwner(firmId) || userIsAdmin();
       allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
       
       // LOADS: Owners can manage their own loads, admins can read and delete them.
