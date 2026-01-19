@@ -9,7 +9,7 @@ import { Briefcase, Loader2, Edit, Save, Camera, Building, Truck, Users, MapPin 
 import { format } from 'date-fns';
 import { useAdmin } from '@/hooks/use-admin';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -19,6 +19,7 @@ import { placeholderImages } from '@/lib/placeholder-images';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { turkishCities } from '@/lib/cities';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 function PortalPageContents() {
     const firestore = useFirestore();
@@ -320,15 +321,14 @@ function PortalPageContents() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                 {sofor.latitude && sofor.longitude ? (
-                                    <Button asChild variant="outline" size="icon" className="h-8 w-8">
-                                    <a 
-                                        href={`https://www.google.com/maps/search/?api=1&query=${sofor.latitude},${sofor.longitude}`} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
+                                    <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${sofor.latitude},${sofor.longitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className={cn(buttonVariants({ variant: 'outline', size: 'icon' }), 'h-8 w-8')}
                                     >
-                                        <MapPin className="h-4 w-4" />
+                                    <MapPin className="h-4 w-4" />
                                     </a>
-                                    </Button>
                                 ) : (
                                     <Button variant="outline" size="icon" className="h-8 w-8" disabled>
                                     <MapPin className="h-4 w-4" />
