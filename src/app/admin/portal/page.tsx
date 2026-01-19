@@ -113,18 +113,28 @@ function PortalPageContents() {
     
     const handleAvatarClick = () => fileInputRef.current?.click();
 
-    const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        if (event.target.files && event.target.files[0]) {
+    const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files[0] && adminDocRef) {
           const file = event.target.files[0];
           const previewUrl = URL.createObjectURL(file);
           setAvatarPreview(previewUrl);
+          try {
+            await updateDoc(adminDocRef, {
+              profilePicture: previewUrl
+            });
+            toast({ title: 'Başarılı', description: 'Profil resmi güncellendi.' });
+          } catch (error) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Profil resmi güncellenemedi.' });
+            console.error("Avatar update error:", error);
+            setAvatarPreview(currentAdminData?.profilePicture || null); // Revert on error
+          }
         }
     };
     
     const handleProfileUpdate = async () => {
         if (!adminDocRef) return;
         try {
-          await updateDoc(adminDocRef, { ...editData, profilePicture: avatarPreview });
+          await updateDoc(adminDocRef, { ...editData });
           toast({ title: 'Başarılı', description: 'Profil bilgileriniz güncellendi.' });
           setIsEditDialogOpen(false);
         } catch (error) {
@@ -138,17 +148,35 @@ function PortalPageContents() {
              <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div className="flex items-center gap-4">
-                         <Avatar className="h-16 w-16">
-                            {avatarPreview ? (
-                                <AvatarImage src={avatarPreview} alt="Personel profili" />
-                            ) : adminAvatar ? (
-                                <AvatarImage src={adminAvatar.imageUrl} data-ai-hint={adminAvatar.imageHint} />
-                            ) : null}
-                            <AvatarFallback>
-                                {currentAdminData?.firstName?.[0] || 'P'}
-                                {currentAdminData?.lastName?.[0] || ''}
-                            </AvatarFallback>
-                        </Avatar>
+                        <div className="relative group">
+                            <Avatar className="h-16 w-16">
+                                {avatarPreview ? (
+                                    <AvatarImage src={avatarPreview} alt="Personel profili" />
+                                ) : adminAvatar ? (
+                                    <AvatarImage src={adminAvatar.imageUrl} data-ai-hint={adminAvatar.imageHint} />
+                                ) : null}
+                                <AvatarFallback>
+                                    {currentAdminData?.firstName?.[0] || 'P'}
+                                    {currentAdminData?.lastName?.[0] || ''}
+                                </AvatarFallback>
+                            </Avatar>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleAvatarChange}
+                                className="hidden"
+                                accept="image/*"
+                            />
+                            <Button
+                                type="button"
+                                size="icon"
+                                className="absolute inset-0 w-full h-full bg-black/50 opacity-0 group-hover:opacity-100 rounded-full flex items-center justify-center cursor-pointer transition-opacity"
+                                onClick={handleAvatarClick}
+                            >
+                                <Camera className="h-6 w-6 text-white"/>
+                                <span className="sr-only">Profil resmini değiştir</span>
+                            </Button>
+                        </div>
                         <div>
                              <CardTitle className="font-headline text-2xl">
                                 Hoş Geldiniz, {currentAdminData?.firstName || adminData?.username || 'Personel'}!
@@ -165,27 +193,10 @@ function PortalPageContents() {
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>Profil Bilgilerini Düzenle</DialogTitle>
+                                <DialogDescription>
+                                    Profil bilgilerinizi güncelleyin.
+                                </DialogDescription>
                             </DialogHeader>
-                             <div className="flex justify-center">
-                                <div className="relative">
-                                    <Avatar className="h-24 w-24">
-                                        {avatarPreview && <AvatarImage src={avatarPreview} alt="Profil resmi" />}
-                                        <AvatarFallback>
-                                            {editData.firstName?.[0]}{editData.lastName?.[0]}
-                                        </AvatarFallback>
-                                    </Avatar>
-                                     <input
-                                      type="file"
-                                      ref={fileInputRef}
-                                      onChange={handleAvatarChange}
-                                      className="hidden"
-                                      accept="image/*"
-                                    />
-                                    <Button type="button" size="icon" className="absolute bottom-0 right-0 rounded-full h-8 w-8" onClick={handleAvatarClick}>
-                                        <Camera className="h-4 w-4"/>
-                                    </Button>
-                                </div>
-                            </div>
                             <div className="grid gap-4 py-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div><Label htmlFor="firstName">Ad</Label><Input id="firstName" name="firstName" value={editData.firstName} onChange={handleEditInputChange} /></div>
