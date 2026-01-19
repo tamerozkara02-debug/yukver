@@ -2,10 +2,10 @@
 
 import { Suspense, useMemo, useState, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, collectionGroup, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, collectionGroup, query, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Loader2, Edit, Save, Camera, Phone, MessageCircle, Building, Truck, Users, MapPin } from "lucide-react";
+import { Briefcase, Loader2, Edit, Save, Camera, Building, Truck, Users, MapPin } from "lucide-react";
 import { format } from 'date-fns';
 import { useAdmin } from '@/hooks/use-admin';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { turkishCities } from '@/lib/cities';
+import { Badge } from '@/components/ui/badge';
 
 function PortalPageContents() {
     const firestore = useFirestore();
@@ -48,13 +49,10 @@ function PortalPageContents() {
     const allDriversQuery = useMemoFirebase(() => firestore ? collection(firestore, 'drivers') : null, [firestore]);
     const { data: allDrivers, isLoading: isLoadingAllDrivers } = useCollection(allDriversQuery);
     
-    const availableDriversQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'drivers'), where('isAvailable', '==', true)) : null, [firestore]);
-    const { data: availableDrivers, isLoading: isLoadingAvailableDrivers } = useCollection(availableDriversQuery);
-
     const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
-    const isLoading = isAdminLoading || isCurrentAdminLoading || isLoadingLoads || isLoadingFirms || isLoadingAllDrivers || isLoadingAvailableDrivers || isLoadingPersonel;
+    const isLoading = isAdminLoading || isCurrentAdminLoading || isLoadingLoads || isLoadingFirms || isLoadingAllDrivers || isLoadingPersonel;
 
     // --- MEMOIZED DATA & FILTERS ---
     const liveStats = useMemo(() => [
@@ -73,10 +71,10 @@ function PortalPageContents() {
       return loads?.filter(load => load.originCity === appliedCity || load.destinationCity === appliedCity) || [];
     }, [loads, appliedCity]);
   
-    const filteredAvailableDrivers = useMemo(() => {
-      if (appliedCity === 'all') return availableDrivers;
-      return availableDrivers?.filter(driver => driver.currentCity === appliedCity) || [];
-    }, [availableDrivers, appliedCity]);
+    const filteredAllDrivers = useMemo(() => {
+      if (appliedCity === 'all') return allDrivers;
+      return allDrivers?.filter(driver => driver.currentCity === appliedCity) || [];
+    }, [allDrivers, appliedCity]);
 
     const getFirmName = (firmId: string) => {
         const firm = firms?.find(f => f.id === firmId);
@@ -293,26 +291,59 @@ function PortalPageContents() {
 
                   <Card className="lg:col-span-1">
                     <CardHeader>
-                       <CardTitle className="flex items-center gap-2"><Truck className="w-5 h-5 text-primary" /> Müsait Şoförler ({filteredAvailableDrivers?.length || 0})</CardTitle>
-                      <CardDescription>Şu anda yüke hazır olan şoförlerin listesi.</CardDescription>
+                        <CardTitle className="flex items-center gap-2">
+                            <Truck className="w-5 h-5 text-primary" />
+                            Şoförler ({filteredAllDrivers?.length || 0})
+                        </CardTitle>
+                        <CardDescription>Platformdaki tüm kayıtlı şoförler.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                       <Table>
-                        <TableHeader><TableRow><TableHead>Ad Soyad</TableHead><TableHead>Anlık Şehir</TableHead><TableHead>Araç Bilgisi</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                          {isLoading && <TableRow><TableCell colSpan={3} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
-                          {!isLoading && filteredAvailableDrivers?.map((sofor: any) => (
-                            <TableRow key={sofor.id}>
-                              <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
-                              <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
-                              <TableCell>{sofor.vehicleType}</TableCell>
+                        <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>Ad Soyad</TableHead>
+                            <TableHead>Anlık Şehir</TableHead>
+                            <TableHead>Durum</TableHead>
+                            <TableHead className="text-right">Konum</TableHead>
                             </TableRow>
-                          ))}
-                          {!isLoading && (!filteredAvailableDrivers || filteredAvailableDrivers.length === 0) && (
-                               <TableRow><TableCell colSpan={3} className="h-24 text-center">{appliedCity === 'all' ? 'Müsait şoför bulunmuyor.' : 'Bu şehirde müsait şoför bulunmuyor.'}</TableCell></TableRow>
-                          )}
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
+                            {!isLoading && filteredAllDrivers?.map((sofor: any) => (
+                            <TableRow key={sofor.id}>
+                                <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
+                                <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
+                                <TableCell>
+                                <Badge variant={sofor.isAvailable ? 'default' : 'destructive'} className={sofor.isAvailable ? 'bg-green-600' : 'bg-red-600'}>
+                                    {sofor.isAvailable ? 'Boşta' : 'Dolu'}
+                                </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                {sofor.latitude && sofor.longitude ? (
+                                    <Button asChild variant="outline" size="icon" className="h-8 w-8">
+                                    <a 
+                                        href={`https://www.google.com/maps/search/?api=1&query=${sofor.latitude},${sofor.longitude}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                    >
+                                        <MapPin className="h-4 w-4" />
+                                    </a>
+                                    </Button>
+                                ) : (
+                                    <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+                                    <MapPin className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                </TableCell>
+                            </TableRow>
+                            ))}
+                            {!isLoading && (!filteredAllDrivers || filteredAllDrivers.length === 0) && (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center">
+                                    {appliedCity === 'all' ? 'Kayıtlı şoför bulunmuyor.' : 'Bu şehirde kayıtlı şoför bulunmuyor.'}
+                                </TableCell></TableRow>
+                            )}
                         </TableBody>
-                      </Table>
+                        </Table>
                     </CardContent>
                   </Card>
               </div>
