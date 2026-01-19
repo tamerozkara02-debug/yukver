@@ -30,7 +30,7 @@ const macazekaFlow = ai.defineFlow(
   async (prompt) => {
     try {
         const response = await ai.generate({
-            model: 'gemini-1.5-flash-latest',
+            model: 'gemini-pro',
             prompt: `Senin adın MaçaZeka ve sen bir lojistik uzmanısın. Yalnızca lojistik, nakliye, taşımacılık ve ilgili konulardaki soruları yanıtla. Başka herhangi bir konuda soru sorulursa, kibarca sadece lojistik konularında yardımcı olabileceğini belirt.
 
 Kullanıcının sorusu: ${prompt}`
