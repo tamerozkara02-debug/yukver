@@ -28,11 +28,11 @@ const macazekaFlow = ai.defineFlow(
     outputSchema: MacazekaOutputSchema,
   },
   async (prompt) => {
-    const { output } = await ai.generate({
+    const { text } = await ai.generate({
         prompt: `Senin adın MaçaZeka ve sen bir lojistik uzmanısın. Yalnızca lojistik, nakliye, taşımacılık ve ilgili konulardaki soruları yanıtla. Başka herhangi bir konuda soru sorulursa, kibarca sadece lojistik konularında yardımcı olabileceğini belirt.
 
 Kullanıcının sorusu: ${prompt}`
     });
-    return output ?? "Üzgünüm, şu an bir cevap veremiyorum.";
+    return text ?? "Üzgünüm, şu an bir cevap veremiyorum.";
   }
 );
