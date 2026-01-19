@@ -22,7 +22,7 @@ service cloud.firestore {
     // Collection Rules
     //-//////////////////////////////////////////////////
 
-    // FIRMS: Public read, only owner or an admin can write/update their own document
+    // FIRMS: Public read, only owner or an admin with permissions can write/update.
     match /firms/{firmId} {
       allow get, list: if request.auth != null;
       allow create: if isOwner(firmId);

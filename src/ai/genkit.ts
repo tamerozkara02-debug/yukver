@@ -9,6 +9,6 @@ export const ai = genkit({
     // LÜTFEN DİKKAT:
     // MaçaZeka'yı çalıştırmak için Google AI Studio'dan aldığınız API anahtarını
     // aşağıdaki tırnak işaretlerinin arasına yapıştırın.
-    apiKey: "AIzaSyAz2qAsijAe65Aq5gRbrx0ZCQyO4lx6HOE",
+    apiKey: "AIzaSyD67vN9GdivzU0ob8631iw955zzDrXtHnw",
   })],
 });
