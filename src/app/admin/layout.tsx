@@ -71,8 +71,6 @@ export default function AdminLayout({
     );
   }
   
-  const isFullAdmin = adminData?.permissions?.canViewDashboard;
-
   return (
     <SidebarProvider>
       <Sidebar>
@@ -124,17 +122,15 @@ export default function AdminLayout({
                 </SidebarMenuButton>
               </SidebarMenuItem>
             )}
-             {isFullAdmin && (
-              <>
-                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
-                    <Link href="/admin/uyeler">
-                      <Users />
-                      <span>Üyeler</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </>
+            {adminData?.permissions.canManageMembers && (
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/admin/uyeler")}>
+                  <Link href="/admin/uyeler">
+                    <Users />
+                    <span>Üyeler</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             )}
           </SidebarMenu>
         </SidebarContent>
