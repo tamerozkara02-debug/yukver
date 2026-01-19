@@ -221,27 +221,23 @@ export default function AdminUyelerPage() {
                           <TableCell>{firma.city}, {firma.district}</TableCell>
                           <TableCell>
                             {isClaimed ? (
-                                <Badge variant={isClaimedByCurrentUser ? "default" : "destructive"}>
-                                    {isClaimedByCurrentUser 
-                                        ? "Sizin tarafınızdan işleme alındı" 
-                                        : `${getStaffName(firma.claimedByStaffId)} tarafından işleniyor`}
-                                </Badge>
-                            ) : (
-                                <Badge variant="secondary">Beklemede</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right space-x-2">
-                             {isClaimed ? (
                                 isClaimedByCurrentUser ? (
-                                    <Button size="sm" variant="outline" onClick={() => handleReleaseFirm(firma.id)}>Bırak</Button>
+                                    <div className="flex items-center gap-2">
+                                        <Button size="sm" variant="outline" onClick={() => handleReleaseFirm(firma.id)}>Bırak</Button>
+                                    </div>
                                 ) : (
-                                    <Button size="sm" variant="outline" disabled>İşlemde</Button>
+                                    <div className="flex flex-col items-start gap-1 text-xs">
+                                        <Badge variant="destructive">İşlemde</Badge>
+                                        <span className="text-muted-foreground">{getStaffName(firma.claimedByStaffId)}</span>
+                                    </div>
                                 )
-                             ) : (
+                            ) : (
                                 <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleClaimFirm(firma.id)}>
                                     <ClipboardCheck className="mr-2 h-4 w-4" /> İşleme Al
                                 </Button>
-                             )}
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right space-x-2">
                             <Button variant="outline" size="sm" asChild><a href={`tel:${firma.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
                             <Button variant="outline" size="sm" asChild><a href={`sms:${firma.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
                             <AlertDialog>
