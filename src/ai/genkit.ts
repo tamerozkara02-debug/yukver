@@ -6,9 +6,9 @@ import {googleAI} from '@genkit-ai/google-genai';
 
 export const ai = genkit({
   plugins: [googleAI({
-    // API anahtarı, projenin ana dizinindeki .env dosyasından okunur.
-    // Eğer anahtarı doğrudan buraya yazmak isterseniz, aşağıdaki satırı kullanabilirsiniz:
-    // apiKey: "SIZIN_API_ANAHTARINIZ"
-    apiKey: process.env.GEMINI_API_KEY,
+    // LÜTFEN DİKKAT:
+    // MaçaZeka'yı çalıştırmak için Google AI Studio'dan aldığınız API anahtarını
+    // aşağıdaki tırnak işaretlerinin arasına yapıştırın.
+    apiKey: "YAPI_ANAHTARINIZI_BURAYA_YAPISTIRIN",
   })],
 });
