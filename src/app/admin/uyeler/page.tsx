@@ -311,7 +311,7 @@ export default function AdminUyelerPage() {
                       <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
                       <TableCell>{sofor.vehicleType} - {sofor.vehiclePlate}</TableCell>
                       <TableCell>
-                         <Badge variant={sofor.isAvailable ? 'default' : 'destructive'} className={sofor.isAvailable ? 'bg-green-600' : 'bg-red-600'}>
+                         <Badge variant={sofor.isAvailable ? 'default' : 'destructive'} className={cn(sofor.isAvailable ? 'bg-green-600' : 'bg-red-600')}>
                             {sofor.isAvailable ? 'Boşta' : 'Dolu'}
                         </Badge>
                       </TableCell>
