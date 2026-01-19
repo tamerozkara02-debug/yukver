@@ -52,7 +52,9 @@
             "district": { "type": "string" },
             "profilePicture": { "type": "string", "format": "uri" },
             "taxOffice": { "type": "string" },
-            "taxNumber": { "type": "string" }
+            "taxNumber": { "type": "string" },
+            "claimedByStaffId": { "type": "string", "description": "The UID of the staff member who has claimed this firm for interaction." },
+            "claimedAt": { "type": "string", "format": "date-time", "description": "The timestamp when the firm was claimed." }
         },
         "required": ["id", "firstName", "lastName", "phoneNumber", "city", "district"]
     },

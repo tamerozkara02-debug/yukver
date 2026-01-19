@@ -18,15 +18,18 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Phone, MessageCircle, Truck, Building, Loader2, Trash2 } from "lucide-react"
+import { Phone, MessageCircle, Truck, Building, Loader2, Trash2, ClipboardCheck } from "lucide-react"
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { collection, doc, deleteDoc } from "firebase/firestore"
+import { collection, doc, deleteDoc, updateDoc, serverTimestamp, deleteField } from "firebase/firestore"
 import { useAdmin } from "@/hooks/use-admin"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
+
+const CLAIM_DURATION_MINUTES = 15;
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
@@ -34,16 +37,33 @@ export default function AdminUyelerPage() {
   const { adminData, isLoading: isAdminLoading } = useAdmin();
   const { toast } = useToast();
 
+  const [_, setNow] = useState(new Date());
+
   // State for filters
   const [selectedFirmCity, setSelectedFirmCity] = useState<string>('all');
   const [selectedDriverCity, setSelectedDriverCity] = useState<string>('all');
 
   const firmsCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
   const driversCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
+  const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
 
   const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
   const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
+  const { data: personel } = useCollection(personelCollection);
   
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 60000); // Re-render every minute to update claim status
+    return () => clearInterval(timer);
+  }, []);
+
+  const getStaffName = (staffId: string) => {
+    if (!personel) return 'Bilinmeyen Personel';
+    const staffMember = personel.find(p => p.id === staffId);
+    return staffMember ? `${staffMember.firstName} ${staffMember.lastName?.[0] || ''}.` : 'Bilinmeyen Personel';
+  }
+
   const firmCities = useMemo(() => {
     if (!firmalar) return [];
     const cities = new Set(firmalar.map(f => f.city).filter(Boolean));
@@ -71,6 +91,37 @@ export default function AdminUyelerPage() {
 
   const isLoading = isUserLoading || isLoadingFirms || isLoadingDrivers || isAdminLoading;
   const canManageMembers = adminData?.permissions?.canManageMembers;
+
+  const handleClaimFirm = async (firmId: string) => {
+    if (!firestore || !user) return;
+    const firmDocRef = doc(firestore, 'firms', firmId);
+    try {
+        await updateDoc(firmDocRef, {
+            claimedByStaffId: user.uid,
+            claimedAt: serverTimestamp(),
+        });
+        toast({ title: "Firma İşleme Alındı", description: "Bu firma 15 dakikalığına sizin tarafınızdan yönetilecek." });
+    } catch (error) {
+        console.error("Error claiming firm:", error);
+        toast({ variant: "destructive", title: "Hata", description: "Firma işleme alınamadı." });
+    }
+  };
+
+  const handleReleaseFirm = async (firmId: string) => {
+      if (!firestore) return;
+      const firmDocRef = doc(firestore, 'firms', firmId);
+      try {
+          await updateDoc(firmDocRef, {
+              claimedByStaffId: deleteField(),
+              claimedAt: deleteField(),
+          });
+          toast({ title: "Firma Serbest Bırakıldı", description: "Firma artık diğer personel tarafından işleme alınabilir." });
+      } catch (error) {
+          console.error("Error releasing firm:", error);
+          toast({ variant: "destructive", title: "Hata", description: "Firma serbest bırakılamadı." });
+      }
+  };
+
 
   const handleDeleteMember = async (memberId: string, memberType: 'firma' | 'sofor') => {
     if (!firestore) return;
@@ -153,43 +204,71 @@ export default function AdminUyelerPage() {
                     <TableHead>Yetkili</TableHead>
                     <TableHead>Telefon</TableHead>
                     <TableHead>Konum</TableHead>
-                    <TableHead className="text-right">İşlemler</TableHead>
+                    <TableHead>İşlem Durumu</TableHead>
+                    <TableHead className="text-right">İletişim & Silme</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading && <TableRow><TableCell colSpan={4} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
-                  {!isLoading && filteredFirmalar?.map((firma: any) => (
-                    <TableRow key={firma.id}>
-                      <TableCell className="font-medium">{firma.firstName} {firma.lastName}</TableCell>
-                      <TableCell>{firma.phoneNumber}</TableCell>
-                      <TableCell>{firma.city}, {firma.district}</TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button variant="outline" size="sm" asChild><a href={`tel:${firma.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
-                        <Button variant="outline" size="sm" asChild><a href={`sms:${firma.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers}>
-                                    <Trash2 className="h-4 w-4"/>
+                  {isLoading && <TableRow><TableCell colSpan={5} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
+                  {!isLoading && filteredFirmalar?.map((firma: any) => {
+                    const isClaimed = firma.claimedAt && (new Date().getTime() - firma.claimedAt.toDate().getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
+                    const isClaimedByCurrentUser = isClaimed && firma.claimedByStaffId === user?.uid;
+                    
+                    return (
+                        <TableRow key={firma.id}>
+                          <TableCell className="font-medium">{firma.firstName} {firma.lastName}</TableCell>
+                          <TableCell>{firma.phoneNumber}</TableCell>
+                          <TableCell>{firma.city}, {firma.district}</TableCell>
+                          <TableCell>
+                            {isClaimed ? (
+                                <Badge variant={isClaimedByCurrentUser ? "default" : "destructive"}>
+                                    {isClaimedByCurrentUser 
+                                        ? "Sizin tarafınızdan işleme alındı" 
+                                        : `${getStaffName(firma.claimedByStaffId)} tarafından işleniyor`}
+                                </Badge>
+                            ) : (
+                                <Badge variant="secondary">Beklemede</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right space-x-2">
+                             {isClaimed ? (
+                                isClaimedByCurrentUser ? (
+                                    <Button size="sm" variant="outline" onClick={() => handleReleaseFirm(firma.id)}>Bırak</Button>
+                                ) : (
+                                    <Button size="sm" variant="outline" disabled>İşlemde</Button>
+                                )
+                             ) : (
+                                <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleClaimFirm(firma.id)}>
+                                    <ClipboardCheck className="mr-2 h-4 w-4" /> İşleme Al
                                 </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Firmayı Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Bu işlem, firma profilini ve ilişkili tüm verileri (ilanlar vb.) kalıcı olarak siler. Bu işlem geri alınamaz.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>İptal</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteMember(firma.id, 'firma')}>Sil</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                             )}
+                            <Button variant="outline" size="sm" asChild><a href={`tel:${firma.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
+                            <Button variant="outline" size="sm" asChild><a href={`sms:${firma.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers}>
+                                        <Trash2 className="h-4 w-4"/>
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Firmayı Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Bu işlem, firma profilini ve ilişkili tüm verileri (ilanlar vb.) kalıcı olarak siler. Bu işlem geri alınamaz.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>İptal</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteMember(firma.id, 'firma')}>Sil</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                          </TableCell>
+                        </TableRow>
+                    )
+                  })}
                    {!isLoading && (!filteredFirmalar || filteredFirmalar.length === 0) && (
-                    <TableRow><TableCell colSpan={4} className="text-center h-24">{selectedFirmCity === 'all' ? 'Kayıtlı firma bulunmuyor.' : 'Bu şehirde kayıtlı firma bulunmuyor.'}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">{selectedFirmCity === 'all' ? 'Kayıtlı firma bulunmuyor.' : 'Bu şehirde kayıtlı firma bulunmuyor.'}</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
