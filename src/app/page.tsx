@@ -1,10 +1,16 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Truck, Building, ArrowRight, User, LogIn, Briefcase } from 'lucide-react';
+import { Truck, Building, ArrowRight, User, LogIn, Briefcase, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { MacazekaChat } from '@/components/macazeka-chat';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 export default function Home() {
   const heroImage = placeholderImages.find(p => p.id === "hero-logistics");
@@ -154,13 +160,22 @@ export default function Home() {
       </main>
 
       <footer className="bg-background border-t">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-muted-foreground text-sm">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center gap-2 text-muted-foreground text-sm">
           <p>&copy; {new Date().getFullYear()} MAÇA LOJİSTİK MERKEZİ. Tüm hakları saklıdır.</p>
-          <div className="mt-2">
-            <Link href="/admin/giris" className="hover:text-primary">
-              Personel Girişi
-            </Link>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button asChild variant="ghost" size="icon">
+                  <Link href="/admin/giris" aria-label="Personel Girişi">
+                    <UserCog className="h-5 w-5" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Personel Girişi</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </footer>
       <MacazekaChat />
