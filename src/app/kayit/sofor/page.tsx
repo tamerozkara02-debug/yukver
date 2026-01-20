@@ -25,6 +25,7 @@ export default function SoforKayitPage() {
   const driverAvatar = placeholderImages.find(p => p.id === 'avatar-driver');
   const [avatarPreview, setAvatarPreview] = useState<string | null>(driverAvatar?.imageUrl || null);
   const [vehicleType, setVehicleType] = useState('');
+  const [vehiclePlate, setVehiclePlate] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,6 +74,10 @@ export default function SoforKayitPage() {
         setPhoneNumber(formattedValue);
     };
 
+    const handlePlateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setVehiclePlate(e.target.value.toUpperCase());
+    };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
 
@@ -88,9 +93,9 @@ export default function SoforKayitPage() {
       const password = formData.get('password') as string;
       const firstName = formData.get('ad') as string;
       const lastName = formData.get('soyad') as string;
-      const vehiclePlate = formData.get('arac-plaka') as string;
+      const currentVehiclePlate = formData.get('arac-plaka') as string;
 
-      if (!email || !password || !firstName || !lastName || !phoneNumber || !vehicleType || !vehiclePlate) {
+      if (!email || !password || !firstName || !lastName || !phoneNumber || !vehicleType || !currentVehiclePlate) {
           toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen tüm zorunlu alanları doldurun.' });
           setIsSubmitting(false);
           return;
@@ -115,7 +120,7 @@ export default function SoforKayitPage() {
                 lastName,
                 phoneNumber,
                 vehicleType,
-                vehiclePlate,
+                vehiclePlate: currentVehiclePlate,
                 profilePicture: avatarPreview || ''
             });
         }
@@ -221,7 +226,15 @@ export default function SoforKayitPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="arac-plaka">Araç Plakası</Label>
-              <Input id="arac-plaka" name="arac-plaka" placeholder="34 ABC 123" required disabled={isSubmitting}/>
+              <Input 
+                id="arac-plaka" 
+                name="arac-plaka" 
+                placeholder="34 ABC 123" 
+                required 
+                disabled={isSubmitting}
+                value={vehiclePlate}
+                onChange={handlePlateChange}
+              />
             </div>
           </div>
            <div className="space-y-2">
