@@ -89,11 +89,12 @@ export default function SoforKayitPage() {
       setIsSubmitting(true);
 
       const formData = new FormData(e.currentTarget);
-      const email = formData.get('email') as string;
+      const email = (formData.get('email') as string || '').trim();
       const password = formData.get('password') as string;
-      const firstName = formData.get('ad') as string;
-      const lastName = formData.get('soyad') as string;
-      const currentVehiclePlate = formData.get('arac-plaka') as string;
+      const firstName = (formData.get('ad') as string || '').trim();
+      const lastName = (formData.get('soyad') as string || '').trim();
+      const currentVehiclePlate = (formData.get('arac-plaka') as string || '').trim();
+
 
       if (!email || !password || !firstName || !lastName || !phoneNumber || !vehicleType || !currentVehiclePlate) {
           toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen tüm zorunlu alanları doldurun.' });

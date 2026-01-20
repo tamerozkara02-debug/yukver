@@ -92,13 +92,13 @@ export default function FirmaKayitPage() {
         setIsSubmitting(true);
 
         const formData = new FormData(e.currentTarget);
-        const email = formData.get('email') as string;
+        const email = (formData.get('email') as string || '').trim();
         const password = formData.get('password') as string;
-        const firstName = formData.get('ad') as string;
-        const lastName = formData.get('soyad') as string;
-        const taxOffice = formData.get('vergi-dairesi') as string;
-        const city = formData.get('sehir') as string;
-        const district = formData.get('ilce') as string;
+        const firstName = (formData.get('ad') as string || '').trim();
+        const lastName = (formData.get('soyad') as string || '').trim();
+        const taxOffice = (formData.get('vergi-dairesi') as string || '').trim();
+        const city = (formData.get('sehir') as string || '').trim();
+        const district = (formData.get('ilce') as string || '').trim();
 
         if (!email || !password || !firstName || !lastName || !phoneNumber || !city || !district || !taxOffice || !taxNumber) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen tüm zorunlu alanları doldurun.' });
