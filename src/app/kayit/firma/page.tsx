@@ -27,6 +27,7 @@ export default function FirmaKayitPage() {
     const [emailError, setEmailError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [phoneNumber, setPhoneNumber] = useState('');
+    const [taxNumber, setTaxNumber] = useState('');
 
     const checkEmail = async (email: string) => {
       if (!email) {
@@ -72,6 +73,13 @@ export default function FirmaKayitPage() {
         setPhoneNumber(formattedValue);
     };
 
+    const handleTaxNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 10) {
+            setTaxNumber(value);
+        }
+    };
+
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -89,12 +97,17 @@ export default function FirmaKayitPage() {
         const firstName = formData.get('ad') as string;
         const lastName = formData.get('soyad') as string;
         const taxOffice = formData.get('vergi-dairesi') as string;
-        const taxNumber = formData.get('vergi-numarasi') as string;
         const city = formData.get('sehir') as string;
         const district = formData.get('ilce') as string;
 
         if (!email || !password || !firstName || !lastName || !phoneNumber || !city || !district || !taxOffice || !taxNumber) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen tüm zorunlu alanları doldurun.' });
+            setIsSubmitting(false);
+            return;
+        }
+
+        if (taxNumber.length !== 10) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Vergi numarası 10 haneli olmalıdır.' });
             setIsSubmitting(false);
             return;
         }
@@ -208,7 +221,7 @@ export default function FirmaKayitPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="vergi-numarasi">Vergi Numarası</Label>
-              <Input id="vergi-numarasi" name="vergi-numarasi" placeholder="10 haneli numara" required disabled={isSubmitting}/>
+              <Input id="vergi-numarasi" name="vergi-numarasi" placeholder="10 haneli numara" required disabled={isSubmitting} value={taxNumber} onChange={handleTaxNumberChange} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
