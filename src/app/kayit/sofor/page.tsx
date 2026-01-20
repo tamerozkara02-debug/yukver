@@ -96,7 +96,7 @@ export default function SoforKayitPage() {
       const currentVehiclePlate = (formData.get('arac-plaka') as string || '').trim();
 
 
-      if (!email || !password || !firstName || !lastName || !phoneNumber || !vehicleType || !currentVehiclePlate) {
+      if (!email || !password || !firstName || !lastName || !phoneNumber.trim() || !vehicleType || !currentVehiclePlate) {
           toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen tüm zorunlu alanları doldurun.' });
           setIsSubmitting(false);
           return;
@@ -242,6 +242,7 @@ export default function SoforKayitPage() {
               <Label htmlFor="password">Şifre</Label>
               <Input id="password" name="password" type="password" required disabled={isSubmitting}/>
             </div>
+           <p className="text-xs text-muted-foreground pt-1">* Tüm alanlar zorunludur.</p>
           <Button type="submit" className="w-full !mt-6" disabled={isSubmitting || !!emailError}>
             {isSubmitting ? 'Kaydediliyor...' : 'Kayıt Ol ve İşe Başla'}
           </Button>
