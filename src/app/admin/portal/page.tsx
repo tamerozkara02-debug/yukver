@@ -2,10 +2,10 @@
 
 import { Suspense, useMemo, useState, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, collectionGroup, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, collectionGroup, query, doc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Loader2, Edit, Save, Camera, Building, Truck, Users, MapPin } from "lucide-react";
+import { Briefcase, Loader2, Edit, Save, Camera, Building, Truck, Users, MapPin, ClipboardCheck } from "lucide-react";
 import { format } from 'date-fns';
 import { useAdmin } from '@/hooks/use-admin';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,6 +22,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
+const CLAIM_DURATION_MINUTES = 30;
+
 function PortalPageContents() {
     const firestore = useFirestore();
     const { user } = useUser();
@@ -37,6 +39,9 @@ function PortalPageContents() {
     // State for city filter
     const [selectedCity, setSelectedCity] = useState<string>('all');
     const [appliedCity, setAppliedCity] = useState<string>('all');
+    
+    // State for timer
+    const [_, setNow] = useState(new Date());
 
     // --- DATA FETCHING ---
     const adminDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user]);
@@ -83,6 +88,12 @@ function PortalPageContents() {
         return firm ? `${firm.firstName} ${firm.lastName}` : 'Bilinmeyen Firma';
     }
 
+    const getStaffName = (staffId: string) => {
+        if (!personel) return 'Bilinmeyen';
+        const staffMember = personel.find(p => p.id === staffId);
+        return staffMember ? `${staffMember.firstName} ${staffMember.lastName?.[0] || ''}.` : 'Bilinmeyen';
+    }
+
     const adminAvatar = placeholderImages.find(p => p.id === 'avatar-driver');
 
     // --- EFFECTS ---
@@ -96,6 +107,13 @@ function PortalPageContents() {
             setAvatarPreview(currentAdminData.profilePicture || null);
         }
     }, [currentAdminData]);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setNow(new Date());
+        }, 60000); // Re-render every minute to update claim status
+        return () => clearInterval(timer);
+    }, []);
 
     // --- HANDLERS ---
     const handleEditInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,6 +159,36 @@ function PortalPageContents() {
         } catch (error) {
           console.error('Profile update error:', error);
           toast({ variant: 'destructive', title: 'Hata', description: 'Profil güncellenemedi.' });
+        }
+    };
+
+    const handleClaimLoad = async (load: any) => {
+        if (!firestore || !user || !load.firmId || !load.id) return;
+        const loadDocRef = doc(firestore, 'firms', load.firmId, 'loads', load.id);
+        try {
+            await updateDoc(loadDocRef, {
+                claimedByStaffId: user.uid,
+                claimedAt: serverTimestamp(),
+            });
+            toast({ title: "İlan İşleme Alındı", description: `Bu ilan ${CLAIM_DURATION_MINUTES} dakikalığına sizin tarafınızdan yönetilecek.` });
+        } catch (error) {
+            console.error("Error claiming load:", error);
+            toast({ variant: "destructive", title: "Hata", description: "İlan işleme alınamadı." });
+        }
+    };
+
+    const handleReleaseLoad = async (load: any) => {
+        if (!firestore || !load.firmId || !load.id) return;
+        const loadDocRef = doc(firestore, 'firms', load.firmId, 'loads', load.id);
+        try {
+            await updateDoc(loadDocRef, {
+                claimedByStaffId: deleteField(),
+                claimedAt: deleteField(),
+            });
+            toast({ title: "İlan Serbest Bırakıldı", description: "İlan artık diğer personel tarafından işleme alınabilir." });
+        } catch (error) {
+            console.error("Error releasing load:", error);
+            toast({ variant: "destructive", title: "Hata", description: "İlan serbest bırakılamadı." });
         }
     };
 
@@ -284,19 +332,39 @@ function PortalPageContents() {
                         </CardHeader>
                         <CardContent>
                         <Table>
-                            <TableHeader><TableRow><TableHead>Firma</TableHead><TableHead>Yük</TableHead><TableHead>Güzergah</TableHead><TableHead>Tarih</TableHead></TableRow></TableHeader>
+                            <TableHeader><TableRow><TableHead>Firma</TableHead><TableHead>Yük</TableHead><TableHead>Güzergah</TableHead><TableHead>İşlem Durumu</TableHead><TableHead>Tarih</TableHead></TableRow></TableHeader>
                             <TableBody>
-                            {isLoading && <TableRow><TableCell colSpan={4} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
-                            {!isLoading && filteredLoads?.map((load: any) => (
+                            {isLoading && <TableRow><TableCell colSpan={5} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
+                            {!isLoading && filteredLoads?.map((load: any) => {
+                                const isClaimed = load.claimedAt && (new Date().getTime() - load.claimedAt.toDate().getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
+                                const isClaimedByCurrentUser = isClaimed && load.claimedByStaffId === user?.uid;
+                                return (
                                 <TableRow key={load.id}>
-                                <TableCell className="font-medium">{getFirmName(load.firmId)}</TableCell>
-                                <TableCell>{load.loadType} - {load.tonnage} ton</TableCell>
-                                <TableCell>{load.originCity} → {load.destinationCity}</TableCell>
-                                <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
+                                    <TableCell className="font-medium">{getFirmName(load.firmId)}</TableCell>
+                                    <TableCell>{load.loadType} - {load.tonnage} ton</TableCell>
+                                    <TableCell>{load.originCity} → {load.destinationCity}</TableCell>
+                                    <TableCell>
+                                    {isClaimed ? (
+                                        isClaimedByCurrentUser ? (
+                                            <Button size="sm" variant="outline" onClick={() => handleReleaseLoad(load)}>Bırak</Button>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <Button size="sm" disabled>İşlemde</Button>
+                                                <span className="text-xs text-muted-foreground">({getStaffName(load.claimedByStaffId)})</span>
+                                            </div>
+                                        )
+                                    ) : (
+                                        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleClaimLoad(load)}>
+                                            <ClipboardCheck className="mr-2 h-4 w-4" /> İşleme Al
+                                        </Button>
+                                    )}
+                                    </TableCell>
+                                    <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
                                 </TableRow>
-                            ))}
+                                );
+                            })}
                             {!isLoading && (!filteredLoads || filteredLoads.length === 0) && (
-                                <TableRow><TableCell colSpan={4} className="h-24 text-center">{appliedCity === 'all' ? 'Aktif yük ilanı bulunmuyor.' : 'Bu şehirde aktif yük ilanı bulunmuyor.'}</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={5} className="h-24 text-center">{appliedCity === 'all' ? 'Aktif yük ilanı bulunmuyor.' : 'Bu şehirde aktif yük ilanı bulunmuyor.'}</TableCell></TableRow>
                             )}
                             </TableBody>
                         </Table>
@@ -380,3 +448,5 @@ export default function PortalPage() {
         </Suspense>
     )
 }
+
+    
