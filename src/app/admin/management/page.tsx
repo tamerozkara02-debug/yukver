@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Trash2, Pencil, Users, Building, Truck, PlusCircle } from 'lucide-react';
@@ -32,6 +31,11 @@ export default function ManagementPage() {
     const [isAddSubmitting, setIsAddSubmitting] = useState(false);
     const [newStaffData, setNewStaffData] = useState({ email: '', password: '', confirmPassword: '' });
     
+    // New states for delete confirmation
+    const [entityToDelete, setEntityToDelete] = useState<{id: string; type: string; name: string} | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const defaultPermissions: AdminPermissions = {
         canViewDashboard: true,
         canTrackLocations: false,
@@ -134,14 +138,19 @@ export default function ManagementPage() {
         }
     };
     
-    const handleDelete = async (id: string, type: string) => {
-        if (!firestore) return;
+    const handleDeleteConfirmed = async () => {
+        if (!entityToDelete || !firestore) return;
+        setIsDeleting(true);
         try {
-            await deleteDoc(doc(firestore, type, id));
-            toast({ title: 'Başarılı', description: 'Kullanıcı başarıyla silindi.' });
+            await deleteDoc(doc(firestore, entityToDelete.type, entityToDelete.id));
+            toast({ title: 'Başarılı', description: `${entityToDelete.name} başarıyla silindi.` });
         } catch (error) {
             console.error("Error deleting document:", error);
             toast({ variant: 'destructive', title: 'Hata', description: 'Silme işlemi başarısız oldu.' });
+        } finally {
+            setIsDeleting(false);
+            setEntityToDelete(null);
+            setDeleteConfirmText('');
         }
     };
 
@@ -377,7 +386,7 @@ export default function ManagementPage() {
                                             <TableCell>{p.username}</TableCell>
                                             <TableCell className="text-right space-x-2">
                                                 <Button variant="outline" size="icon" onClick={() => handleEditClick(p, 'roles_admin')}><Pencil className="h-4 w-4" /></Button>
-                                                <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" size="icon"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Emin misiniz?</AlertDialogTitle><AlertDialogDescription>Bu işlem, personelin yönetici rolünü kalıcı olarak kaldıracaktır.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(p.id, 'roles_admin')}>Sil</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                                                <Button variant="destructive" size="icon" onClick={() => setEntityToDelete({ id: p.id, type: 'roles_admin', name: p.username })}><Trash2 className="h-4 w-4"/></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -401,7 +410,7 @@ export default function ManagementPage() {
                                             <TableCell>{f.city}, {f.district}</TableCell>
                                             <TableCell className="text-right space-x-2">
                                                 <Button variant="outline" size="icon" onClick={() => handleEditClick(f, 'firms')}><Pencil className="h-4 w-4" /></Button>
-                                                <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" size="icon"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Emin misiniz?</AlertDialogTitle><AlertDialogDescription>Bu işlem, firma profilini kalıcı olarak silecektir.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(f.id, 'firms')}>Sil</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                                                <Button variant="destructive" size="icon" onClick={() => setEntityToDelete({ id: f.id, type: 'firms', name: `${f.firstName} ${f.lastName}` })}><Trash2 className="h-4 w-4"/></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -425,7 +434,7 @@ export default function ManagementPage() {
                                             <TableCell>{s.vehicleType} - {s.vehiclePlate}</TableCell>
                                             <TableCell className="text-right space-x-2">
                                                 <Button variant="outline" size="icon" onClick={() => handleEditClick(s, 'drivers')}><Pencil className="h-4 w-4" /></Button>
-                                                <AlertDialog><AlertDialogTrigger asChild><Button variant="destructive" size="icon"><Trash2 className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Emin misiniz?</AlertDialogTitle><AlertDialogDescription>Bu işlem, şoför profilini kalıcı olarak silecektir.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>İptal</AlertDialogCancel><AlertDialogAction onClick={() => handleDelete(s.id, 'drivers')}>Sil</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                                                <Button variant="destructive" size="icon" onClick={() => setEntityToDelete({ id: s.id, type: 'drivers', name: `${s.firstName} ${s.lastName}` })}><Trash2 className="h-4 w-4"/></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -450,6 +459,40 @@ export default function ManagementPage() {
                         <Button onClick={handleSave} disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Değişiklikleri Kaydet
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!entityToDelete} onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    setEntityToDelete(null);
+                    setDeleteConfirmText('');
+                }
+            }}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Üyeyi Kalıcı Olarak Sil</DialogTitle>
+                        <DialogDescription>
+                            Bu işlem geri alınamaz. "{entityToDelete?.name}" adlı üyeyi silmek istediğinizden eminseniz, lütfen aşağıdaki alana <strong className="text-foreground">SİL</strong> yazarak onaylayın.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <Input 
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            placeholder='Onaylamak için "SİL" yazın'
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setEntityToDelete(null); setDeleteConfirmText(''); }}>İptal</Button>
+                        <Button 
+                            variant="destructive"
+                            disabled={deleteConfirmText !== 'SİL' || isDeleting}
+                            onClick={handleDeleteConfirmed}
+                        >
+                            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Silmeyi Onayla
                         </Button>
                     </DialogFooter>
                 </DialogContent>
