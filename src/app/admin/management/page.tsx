@@ -16,6 +16,8 @@ import { Loader2, Trash2, Pencil, Users, Building, Truck, PlusCircle } from 'luc
 import { initializeApp, deleteApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, signOut as signOutTempUser, getAuth } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
+import { Switch } from '@/components/ui/switch';
+import { type AdminPermissions } from '@/hooks/use-admin';
 
 
 export default function ManagementPage() {
@@ -30,6 +32,14 @@ export default function ManagementPage() {
     const [isAddSubmitting, setIsAddSubmitting] = useState(false);
     const [newStaffData, setNewStaffData] = useState({ email: '', password: '', confirmPassword: '' });
     
+    const defaultPermissions: AdminPermissions = {
+        canViewDashboard: true,
+        canTrackLocations: false,
+        canManageMembers: true,
+        canManageStaff: false,
+    };
+    const [newStaffPermissions, setNewStaffPermissions] = useState<AdminPermissions>(defaultPermissions);
+
     // Data fetching
     const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
@@ -41,6 +51,13 @@ export default function ManagementPage() {
     const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
 
     const isLoading = isLoadingPersonel || isLoadingFirms || isLoadingDrivers;
+
+    const handleNewStaffPermissionChange = (permissionKey: keyof AdminPermissions, value: boolean) => {
+        setNewStaffPermissions(prev => ({
+            ...prev,
+            [permissionKey]: value,
+        }));
+    };
 
     // --- NEW HANDLER for adding staff ---
     const handleAddStaff = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -71,12 +88,7 @@ export default function ManagementPage() {
             await setDoc(adminRoleRef, {
                 id: newStaffUser.uid,
                 username: newStaffUser.email,
-                permissions: { // Default permissions for super-admin created staff
-                    canViewDashboard: true,
-                    canTrackLocations: false,
-                    canManageMembers: true,
-                    canManageStaff: false,
-                },
+                permissions: newStaffPermissions,
                 firstName: '',
                 lastName: '',
             });
@@ -249,6 +261,7 @@ export default function ManagementPage() {
                                 setIsAddDialogOpen(isOpen);
                                 if (!isOpen) {
                                     setNewStaffData({ email: '', password: '', confirmPassword: '' });
+                                    setNewStaffPermissions(defaultPermissions);
                                 }
                             }}>
                                 <DialogTrigger asChild>
@@ -259,7 +272,7 @@ export default function ManagementPage() {
                                         <DialogHeader>
                                             <DialogTitle>Yeni Personel Oluştur</DialogTitle>
                                             <DialogDescription>
-                                                Yeni personel için bir e-posta ve şifre oluşturun.
+                                                Yeni personel için bir e-posta, şifre ve başlangıç yetkilerini oluşturun.
                                             </DialogDescription>
                                         </DialogHeader>
                                         <div className="grid gap-4 py-4">
@@ -271,6 +284,7 @@ export default function ManagementPage() {
                                                     value={newStaffData.email}
                                                     onChange={(e) => setNewStaffData(p => ({ ...p, email: e.target.value }))}
                                                     required
+                                                    disabled={isAddSubmitting}
                                                 />
                                             </div>
                                             <div className="space-y-2">
@@ -281,6 +295,7 @@ export default function ManagementPage() {
                                                     value={newStaffData.password}
                                                     onChange={(e) => setNewStaffData(p => ({ ...p, password: e.target.value }))}
                                                     required
+                                                    disabled={isAddSubmitting}
                                                 />
                                             </div>
                                             <div className="space-y-2">
@@ -291,7 +306,55 @@ export default function ManagementPage() {
                                                     value={newStaffData.confirmPassword}
                                                     onChange={(e) => setNewStaffData(p => ({ ...p, confirmPassword: e.target.value }))}
                                                     required
+                                                    disabled={isAddSubmitting}
                                                 />
+                                            </div>
+                                            <div className="space-y-4 pt-4">
+                                                <h4 className="font-medium text-sm">Başlangıç Yetkileri</h4>
+                                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                    <div className="space-y-0.5">
+                                                        <Label htmlFor="new-perm-dashboard">Dashboard Görüntüleme</Label>
+                                                    </div>
+                                                    <Switch
+                                                        id="new-perm-dashboard"
+                                                        checked={newStaffPermissions.canViewDashboard}
+                                                        onCheckedChange={(value) => handleNewStaffPermissionChange('canViewDashboard', value)}
+                                                        disabled={isAddSubmitting}
+                                                    />
+                                                </div>
+                                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                    <div className="space-y-0.5">
+                                                        <Label htmlFor="new-perm-location">Konum Takibi</Label>
+                                                    </div>
+                                                    <Switch
+                                                        id="new-perm-location"
+                                                        checked={newStaffPermissions.canTrackLocations}
+                                                        onCheckedChange={(value) => handleNewStaffPermissionChange('canTrackLocations', value)}
+                                                        disabled={isAddSubmitting}
+                                                    />
+                                                </div>
+                                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                    <div className="space-y-0.5">
+                                                        <Label htmlFor="new-perm-members">Üye Yönetimi</Label>
+                                                    </div>
+                                                    <Switch
+                                                        id="new-perm-members"
+                                                        checked={newStaffPermissions.canManageMembers}
+                                                        onCheckedChange={(value) => handleNewStaffPermissionChange('canManageMembers', value)}
+                                                        disabled={isAddSubmitting}
+                                                    />
+                                                </div>
+                                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                    <div className="space-y-0.5">
+                                                        <Label htmlFor="new-perm-staff">Personel Yönetimi</Label>
+                                                    </div>
+                                                    <Switch
+                                                        id="new-perm-staff"
+                                                        checked={newStaffPermissions.canManageStaff}
+                                                        onCheckedChange={(value) => handleNewStaffPermissionChange('canManageStaff', value)}
+                                                        disabled={isAddSubmitting}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                         <DialogFooter>
