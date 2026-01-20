@@ -335,7 +335,7 @@ function PortalPageContents() {
                                           </TooltipContent>
                                         </Tooltip>
                                       ) : (
-                                        <Badge variant="outline">Bekliyor</Badge>
+                                        <Badge variant="default" className="bg-green-600 hover:bg-green-700">Boşta</Badge>
                                       )}
                                     </TableCell>
                                     <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
