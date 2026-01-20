@@ -238,8 +238,8 @@ export default function FirmaKayitPage() {
               <Label htmlFor="password">Şifre</Label>
               <Input id="password" name="password" type="password" required disabled={isSubmitting}/>
             </div>
-            <p className="text-xs text-muted-foreground pt-1">* Tüm alanlar zorunludur.</p>
-          <Button type="submit" className="w-full !mt-6" disabled={isSubmitting || !!emailError}>
+            <p className="text-xs text-center text-muted-foreground">* Tüm alanlar zorunludur.</p>
+          <Button type="submit" className="w-full" disabled={isSubmitting || !!emailError}>
             {isSubmitting ? 'Kaydediliyor...' : 'Kayıt Ol'}
           </Button>
         </form>
