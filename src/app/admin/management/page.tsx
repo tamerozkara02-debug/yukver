@@ -2,17 +2,20 @@
 
 import { useState, useMemo } from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Trash2, Pencil, Users, Building, Truck } from 'lucide-react';
+import { Loader2, Trash2, Pencil, Users, Building, Truck, PlusCircle } from 'lucide-react';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { createUserWithEmailAndPassword, signOut as signOutTempUser, getAuth } from 'firebase/auth';
+import { firebaseConfig } from '@/firebase/config';
 
 
 export default function ManagementPage() {
@@ -21,6 +24,11 @@ export default function ManagementPage() {
 
     const [editingEntity, setEditingEntity] = useState<any>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // New state for adding staff
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+    const [isAddSubmitting, setIsAddSubmitting] = useState(false);
+    const [newStaffData, setNewStaffData] = useState({ email: '', password: '', confirmPassword: '' });
     
     // Data fetching
     const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
@@ -33,6 +41,64 @@ export default function ManagementPage() {
     const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
 
     const isLoading = isLoadingPersonel || isLoadingFirms || isLoadingDrivers;
+
+    // --- NEW HANDLER for adding staff ---
+    const handleAddStaff = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const { email, password, confirmPassword } = newStaffData;
+
+        if (password !== confirmPassword) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Şifreler eşleşmiyor.' });
+            return;
+        }
+        if (password.length < 6) {
+            toast({ variant: 'destructive', title: 'Hata', description: 'Şifre en az 6 karakter olmalıdır.' });
+            return;
+        }
+
+        setIsAddSubmitting(true);
+        const tempAppName = `temp-staff-creation-${Date.now()}`;
+        const tempApp = initializeApp(firebaseConfig, tempAppName);
+        const tempAuth = getAuth(tempApp);
+
+        try {
+            if (!firestore) throw new Error("Firestore is not available.");
+
+            const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
+            const newStaffUser = userCredential.user;
+
+            const adminRoleRef = doc(firestore, 'roles_admin', newStaffUser.uid);
+            await setDoc(adminRoleRef, {
+                id: newStaffUser.uid,
+                username: newStaffUser.email,
+                permissions: { // Default permissions for super-admin created staff
+                    canViewDashboard: true,
+                    canTrackLocations: false,
+                    canManageMembers: true,
+                    canManageStaff: false,
+                },
+                firstName: '',
+                lastName: '',
+            });
+
+            toast({ title: 'Başarılı', description: `${newStaffUser.email} adlı personel başarıyla oluşturuldu.` });
+            setIsAddDialogOpen(false);
+        } catch (error: any) {
+            console.error("Error adding staff:", error);
+            let description = 'Personel oluşturulamadı. Lütfen tekrar deneyin.';
+            if (error.code === 'auth/email-already-in-use') {
+                description = 'Bu e-posta adresi zaten kullanımda.';
+            } else if (error.code === 'auth/invalid-email') {
+                description = 'Geçersiz e-posta adresi formatı.';
+            }
+            toast({ variant: 'destructive', title: 'Hata', description });
+        } finally {
+            await signOutTempUser(tempAuth).catch(e => console.error("Failed to sign out temp user", e));
+            await deleteApp(tempApp).catch(e => console.error("Failed to delete temp app", e));
+            setIsAddSubmitting(false);
+        }
+    };
+
 
     // --- GENERIC HANDLERS ---
     const handleEditClick = (entity: any, type: string) => {
@@ -177,7 +243,67 @@ export default function ManagementPage() {
                 
                 <TabsContent value="personel">
                     <Card>
-                        <CardHeader><CardTitle>Personel Listesi</CardTitle></CardHeader>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle>Personel Listesi</CardTitle>
+                            <Dialog open={isAddDialogOpen} onOpenChange={(isOpen) => {
+                                setIsAddDialogOpen(isOpen);
+                                if (!isOpen) {
+                                    setNewStaffData({ email: '', password: '', confirmPassword: '' });
+                                }
+                            }}>
+                                <DialogTrigger asChild>
+                                    <Button><PlusCircle className="mr-2 h-4 w-4"/> Yeni Personel</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <form onSubmit={handleAddStaff}>
+                                        <DialogHeader>
+                                            <DialogTitle>Yeni Personel Oluştur</DialogTitle>
+                                            <DialogDescription>
+                                                Yeni personel için bir e-posta ve şifre oluşturun.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="new-email">Email</Label>
+                                                <Input
+                                                    id="new-email"
+                                                    type="email"
+                                                    value={newStaffData.email}
+                                                    onChange={(e) => setNewStaffData(p => ({ ...p, email: e.target.value }))}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="new-password">Şifre</Label>
+                                                <Input
+                                                    id="new-password"
+                                                    type="password"
+                                                    value={newStaffData.password}
+                                                    onChange={(e) => setNewStaffData(p => ({ ...p, password: e.target.value }))}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="new-confirm-password">Şifre (Tekrar)</Label>
+                                                <Input
+                                                    id="new-confirm-password"
+                                                    type="password"
+                                                    value={newStaffData.confirmPassword}
+                                                    onChange={(e) => setNewStaffData(p => ({ ...p, confirmPassword: e.target.value }))}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button type="submit" disabled={isAddSubmitting}>
+                                                {isAddSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Oluştur
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        </CardHeader>
                         <CardContent>
                             <Table>
                                 <TableHeader><TableRow><TableHead>Ad Soyad</TableHead><TableHead>Kullanıcı Adı (Email)</TableHead><TableHead className="text-right">İşlemler</TableHead></TableRow></TableHeader>
