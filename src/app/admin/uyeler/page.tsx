@@ -25,7 +25,8 @@ import { useAdmin } from "@/hooks/use-admin"
 import { useState, useMemo, useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -42,6 +43,11 @@ export default function AdminUyelerPage() {
   // State for filters
   const [selectedFirmCity, setSelectedFirmCity] = useState<string>('all');
   const [selectedDriverCity, setSelectedDriverCity] = useState<string>('all');
+  
+  // State for delete confirmation
+  const [entityToDelete, setEntityToDelete] = useState<{id: string; type: 'firma' | 'sofor'; name: string} | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const firmsCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
   const driversCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
@@ -123,16 +129,18 @@ export default function AdminUyelerPage() {
   };
 
 
-  const handleDeleteMember = async (memberId: string, memberType: 'firma' | 'sofor') => {
-    if (!firestore) return;
+  const handleDeleteConfirmed = async () => {
+    if (!entityToDelete || !firestore) return;
+    setIsDeleting(true);
+    const memberType = entityToDelete.type;
     const collectionName = memberType === 'firma' ? 'firms' : 'drivers';
-    const memberDocRef = doc(firestore, collectionName, memberId);
+    const memberDocRef = doc(firestore, collectionName, entityToDelete.id);
     
     try {
         await deleteDoc(memberDocRef);
         toast({
             title: "Üye Silindi",
-            description: `Seçilen ${memberType} sistemden kaldırıldı. (Not: Giriş kaydı devam etmektedir.)`
+            description: `"${entityToDelete.name}" adlı ${memberType} sistemden kaldırıldı.`
         });
     } catch (error) {
         console.error(`Error deleting ${memberType}:`, error);
@@ -141,6 +149,10 @@ export default function AdminUyelerPage() {
             title: "Hata",
             description: `Üye silinirken bir hata oluştu.`
         });
+    } finally {
+        setIsDeleting(false);
+        setEntityToDelete(null);
+        setDeleteConfirmText('');
     }
   };
 
@@ -238,25 +250,9 @@ export default function AdminUyelerPage() {
                           <TableCell className="text-right space-x-2">
                             <Button variant="outline" size="sm" asChild><a href={`tel:${firma.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
                             <Button variant="outline" size="sm" asChild><a href={`sms:${firma.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers}>
-                                        <Trash2 className="h-4 w-4"/>
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>Firmayı Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Bu işlem, firma profilini ve ilişkili tüm verileri (ilanlar vb.) kalıcı olarak siler. Bu işlem geri alınamaz.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>İptal</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteMember(firma.id, 'firma')}>Sil</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                            <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers} onClick={() => setEntityToDelete({id: firma.id, type: 'firma', name: `${firma.firstName} ${firma.lastName}`})}>
+                                <Trash2 className="h-4 w-4"/>
+                            </Button>
                           </TableCell>
                         </TableRow>
                     )
@@ -316,25 +312,9 @@ export default function AdminUyelerPage() {
                        <TableCell className="text-right space-x-2">
                          <Button variant="outline" size="sm" asChild><a href={`tel:${sofor.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
                         <Button variant="outline" size="sm" asChild><a href={`sms:${sofor.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers}>
-                                    <Trash2 className="h-4 w-4"/>
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>Şoförü Silmek İstediğinizden Emin misiniz?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                   Bu işlem, şoför profilini ve ilişkili tüm verileri kalıcı olarak siler. Bu işlem geri alınamaz.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>İptal</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteMember(sofor.id, 'sofor')}>Sil</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                        <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers} onClick={() => setEntityToDelete({id: sofor.id, type: 'sofor', name: `${sofor.firstName} ${sofor.lastName}`})}>
+                            <Trash2 className="h-4 w-4"/>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -347,6 +327,39 @@ export default function AdminUyelerPage() {
           </Card>
         </TabsContent>
       </Tabs>
+      <Dialog open={!!entityToDelete} onOpenChange={(isOpen) => {
+          if (!isOpen) {
+              setEntityToDelete(null);
+              setDeleteConfirmText('');
+          }
+      }}>
+          <DialogContent>
+              <DialogHeader>
+                  <DialogTitle>Üyeyi Kalıcı Olarak Sil</DialogTitle>
+                  <DialogDescription>
+                      Bu işlem geri alınamaz. "{entityToDelete?.name}" adlı üyeyi silmek istediğinizden eminseniz, lütfen aşağıdaki alana <strong className="text-foreground">SİL</strong> yazarak onaylayın. (Not: Bu işlem yalnızca üye profilini siler, giriş kaydını kaldırmaz.)
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                  <Input 
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder='Onaylamak için "SİL" yazın'
+                  />
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => { setEntityToDelete(null); setDeleteConfirmText(''); }}>İptal</Button>
+                  <Button 
+                      variant="destructive"
+                      disabled={deleteConfirmText !== 'SİL' || isDeleting}
+                      onClick={handleDeleteConfirmed}
+                  >
+                      {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Silmeyi Onayla
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
     </div>
   );
 }

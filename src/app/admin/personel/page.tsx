@@ -27,7 +27,6 @@ import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { useAdmin, type AdminPermissions } from "@/hooks/use-admin"
 import { Switch } from "@/components/ui/switch"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 
 import { initializeApp, deleteApp } from 'firebase/app';
 import { createUserWithEmailAndPassword, signOut as signOutTempUser, getAuth } from 'firebase/auth';
@@ -58,6 +57,11 @@ export default function AdminPersonelPage() {
 
     const [editingStaff, setEditingStaff] = useState<any | null>(null);
     const [permissionsToUpdate, setPermissionsToUpdate] = useState<AdminPermissions | null>(null);
+
+    // State for delete confirmation
+    const [entityToDelete, setEntityToDelete] = useState<any | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
@@ -122,20 +126,27 @@ export default function AdminPersonelPage() {
         }
     };
 
-    const handleDeleteStaff = async (id: string) => {
-        if (!firestore) return;
-        if (id === user?.uid) {
+    const handleDeleteConfirmed = async () => {
+        if (!entityToDelete || !firestore) return;
+        if (entityToDelete.id === user?.uid) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Kendinizi silemezsiniz.' });
+            setEntityToDelete(null);
+            setDeleteConfirmText('');
             return;
         }
+        setIsDeleting(true);
         try {
-            await deleteDoc(doc(firestore, 'roles_admin', id));
-            toast({ title: 'Başarılı', description: 'Personel rolü başarıyla kaldırıldı.' });
+            await deleteDoc(doc(firestore, 'roles_admin', entityToDelete.id));
+            toast({ title: 'Başarılı', description: `"${entityToDelete.username}" adlı personelin rolü başarıyla kaldırıldı.` });
         } catch (error: any) {
             console.error("Error deleting staff role:", error);
             toast({ variant: 'destructive', title: 'Hata', description: error.message || 'Personel rolü silinemedi.' });
+        } finally {
+            setIsDeleting(false);
+            setEntityToDelete(null);
+            setDeleteConfirmText('');
         }
-    }
+    };
     
     const canManage = adminData?.permissions.canManageStaff ?? false;
 
@@ -376,25 +387,9 @@ export default function AdminPersonelPage() {
                           <Button variant="outline" size="icon" onClick={() => openEditDialog(p)} disabled={!canManage}>
                               <Pencil className="h-4 w-4" />
                           </Button>
-                          <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon" disabled={p.id === user?.uid || !canManage}>
-                                    <Trash2 className="h-4 w-4"/>
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                  <AlertDialogTitle>Personel Rolünü Kaldır</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                      Bu işlem, personelin yönetici rolünü ve tüm yetkilerini kaldırır. Ancak, kullanıcının e-posta/şifre ile olan kimlik doğrulaması (login) kaydı silinmez. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?
-                                  </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                  <AlertDialogCancel>İptal</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteStaff(p.id)}>Rolü Kaldır</AlertDialogAction>
-                                  </AlertDialogFooter>
-                              </AlertDialogContent>
-                          </AlertDialog>
+                          <Button variant="destructive" size="icon" disabled={p.id === user?.uid || !canManage} onClick={() => setEntityToDelete(p)}>
+                              <Trash2 className="h-4 w-4"/>
+                          </Button>
                       </TableCell>
                   </TableRow>
                   ))}
@@ -473,6 +468,40 @@ export default function AdminPersonelPage() {
                       <Button onClick={handleSavePermissions} disabled={isSubmitting}>
                           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                           {isSubmitting ? 'Kaydediliyor...' : 'Yetkileri Kaydet'}
+                      </Button>
+                  </DialogFooter>
+              </DialogContent>
+          </Dialog>
+
+          <Dialog open={!!entityToDelete} onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                  setEntityToDelete(null);
+                  setDeleteConfirmText('');
+              }
+          }}>
+              <DialogContent>
+                  <DialogHeader>
+                      <DialogTitle>Personel Rolünü Kalıcı Olarak Sil</DialogTitle>
+                      <DialogDescription>
+                          Bu işlem geri alınamaz. "{entityToDelete?.username}" adlı personelin rolünü silmek istediğinizden eminseniz, lütfen aşağıdaki alana <strong className="text-foreground">SİL</strong> yazarak onaylayın.
+                      </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4">
+                      <Input 
+                          value={deleteConfirmText}
+                          onChange={(e) => setDeleteConfirmText(e.target.value)}
+                          placeholder='Onaylamak için "SİL" yazın'
+                      />
+                  </div>
+                  <DialogFooter>
+                      <Button variant="outline" onClick={() => { setEntityToDelete(null); setDeleteConfirmText(''); }}>İptal</Button>
+                      <Button 
+                          variant="destructive"
+                          disabled={deleteConfirmText !== 'SİL' || isDeleting}
+                          onClick={handleDeleteConfirmed}
+                      >
+                          {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Silmeyi Onayla
                       </Button>
                   </DialogFooter>
               </DialogContent>
