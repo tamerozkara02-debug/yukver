@@ -2,10 +2,10 @@
 
 import { Suspense, useMemo, useState, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, collectionGroup, query, doc, updateDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { collection, collectionGroup, query, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Briefcase, Loader2, Edit, Save, Camera, Building, Truck, Users, MapPin, ClipboardCheck } from "lucide-react";
+import { Briefcase, Loader2, Edit, Save, Camera, Building, Truck, Users, MapPin } from "lucide-react";
 import { format } from 'date-fns';
 import { useAdmin } from '@/hooks/use-admin';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -162,36 +162,6 @@ function PortalPageContents() {
         }
     };
 
-    const handleClaimLoad = async (load: any) => {
-        if (!firestore || !user || !load.firmId || !load.id) return;
-        const loadDocRef = doc(firestore, 'firms', load.firmId, 'loads', load.id);
-        try {
-            await updateDoc(loadDocRef, {
-                claimedByStaffId: user.uid,
-                claimedAt: serverTimestamp(),
-            });
-            toast({ title: "İlan İşleme Alındı", description: `Bu ilan ${CLAIM_DURATION_MINUTES} dakikalığına sizin tarafınızdan yönetilecek.` });
-        } catch (error) {
-            console.error("Error claiming load:", error);
-            toast({ variant: "destructive", title: "Hata", description: "İlan işleme alınamadı." });
-        }
-    };
-
-    const handleReleaseLoad = async (load: any) => {
-        if (!firestore || !load.firmId || !load.id) return;
-        const loadDocRef = doc(firestore, 'firms', load.firmId, 'loads', load.id);
-        try {
-            await updateDoc(loadDocRef, {
-                claimedByStaffId: deleteField(),
-                claimedAt: deleteField(),
-            });
-            toast({ title: "İlan Serbest Bırakıldı", description: "İlan artık diğer personel tarafından işleme alınabilir." });
-        } catch (error) {
-            console.error("Error releasing load:", error);
-            toast({ variant: "destructive", title: "Hata", description: "İlan serbest bırakılamadı." });
-        }
-    };
-
     return (
         <TooltipProvider>
             <div className="space-y-6">
@@ -336,28 +306,37 @@ function PortalPageContents() {
                             <TableBody>
                             {isLoading && <TableRow><TableCell colSpan={5} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
                             {!isLoading && filteredLoads?.map((load: any) => {
-                                const isClaimed = load.claimedAt && (new Date().getTime() - load.claimedAt.toDate().getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
-                                const isClaimedByCurrentUser = isClaimed && load.claimedByStaffId === user?.uid;
+                                const claimTime = load.claimedAt?.toDate();
+                                const isClaimed = claimTime && (new Date().getTime() - claimTime.getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
+                                
+                                let remainingTime = null;
+                                if (isClaimed && claimTime) {
+                                    const expiryTime = claimTime.getTime() + CLAIM_DURATION_MINUTES * 60 * 1000;
+                                    const remainingMillis = expiryTime - new Date().getTime();
+                                    remainingTime = Math.max(0, Math.round(remainingMillis / (60 * 1000)));
+                                }
+
                                 return (
                                 <TableRow key={load.id}>
                                     <TableCell className="font-medium">{getFirmName(load.firmId)}</TableCell>
                                     <TableCell>{load.loadType} - {load.tonnage} ton</TableCell>
                                     <TableCell>{load.originCity} → {load.destinationCity}</TableCell>
                                     <TableCell>
-                                    {isClaimed ? (
-                                        isClaimedByCurrentUser ? (
-                                            <Button size="sm" variant="outline" onClick={() => handleReleaseLoad(load)}>Bırak</Button>
-                                        ) : (
+                                      {isClaimed ? (
+                                        <Tooltip>
+                                          <TooltipTrigger asChild>
                                             <div className="flex items-center gap-2">
-                                                <Button size="sm" disabled>İşlemde</Button>
+                                                <Badge variant="secondary" className="bg-orange-100 text-orange-800 border-orange-200">İşlemde</Badge>
                                                 <span className="text-xs text-muted-foreground">({getStaffName(load.claimedByStaffId)})</span>
                                             </div>
-                                        )
-                                    ) : (
-                                        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleClaimLoad(load)}>
-                                            <ClipboardCheck className="mr-2 h-4 w-4" /> İşleme Al
-                                        </Button>
-                                    )}
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            {remainingTime !== null && <p>Kalan süre: ~{remainingTime} dakika</p>}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      ) : (
+                                        <Badge variant="outline">Bekliyor</Badge>
+                                      )}
                                     </TableCell>
                                     <TableCell className="text-xs">{load.createdAt ? format(load.createdAt.toDate(), 'dd/MM/yy') : '-'}</TableCell>
                                 </TableRow>
@@ -448,5 +427,7 @@ export default function PortalPage() {
         </Suspense>
     )
 }
+
+    
 
     
