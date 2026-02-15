@@ -3,12 +3,13 @@ import {googleAI} from '@genkit-ai/google-genai';
 
 // Next.js, .env dosyasındaki değişkenleri otomatik olarak 'process.env' içine yükler.
 // Bu yüzden ek bir pakete gerek yoktur.
+// API anahtarınız artık projenizin ana dizinindeki .env dosyasından okunacaktır.
 
 export const ai = genkit({
   plugins: [googleAI({
     // LÜTFEN DİKKAT:
-    // MaçaZeka'yı çalıştırmak için Google AI Studio'dan aldığınız API anahtarını
-    // aşağıdaki tırnak işaretlerinin arasına yapıştırın.
-    apiKey: "AIzaSyD67vN9GdivzU0ob8631iw955zzDrXtHnw",
+    // API anahtarınız artık doğrudan kodun içinde değil, .env dosyasındaki
+    // GEMINI_API_KEY değişkeninden alınıyor. Bu çok daha güvenli bir yöntemdir.
+    apiKey: process.env.GEMINI_API_KEY,
   })],
 });
