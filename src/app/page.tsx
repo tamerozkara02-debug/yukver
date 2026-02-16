@@ -1,6 +1,8 @@
+'use client'
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Truck, Building, ArrowRight, User, LogIn, Briefcase, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { placeholderImages } from '@/lib/placeholder-images';
@@ -14,7 +16,7 @@ import {
 
 
 export default function Home() {
-  const heroImage = placeholderImages.find(p => p.id === "hero-logistics");
+    const heroImage = placeholderImages.find(p => p.id === 'hero-logistics');
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -42,18 +44,18 @@ export default function Home() {
       </header>
 
       <main className="flex-grow">
-        <section className="relative py-20 md:py-32 bg-card">
-            {heroImage && (
-                 <Image
-                    src={heroImage.imageUrl}
-                    alt={heroImage.description}
-                    fill
-                    className="object-cover"
-                    data-ai-hint={heroImage.imageHint}
-                    priority
-                />
-            )}
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm"></div>
+        <section className="relative py-20 md:py-32 overflow-hidden">
+          {heroImage && (
+            <Image
+              src={heroImage.imageUrl}
+              alt={heroImage.description}
+              fill
+              className="object-cover"
+              data-ai-hint={heroImage.imageHint}
+              priority
+            />
+          )}
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm"></div>
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
             <h2 className="text-4xl md:text-6xl font-bold font-headline text-foreground">Türkiye'nin Yükü Burada</h2>
             <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
@@ -163,7 +165,6 @@ export default function Home() {
       <footer className="bg-background border-t">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center gap-2 text-muted-foreground text-sm">
           <p>&copy; {new Date().getFullYear()} MAÇA LOJİSTİK MERKEZİ. Tüm hakları saklıdır.</p>
-          <p>Bu site "TAMER ÖZKARA" tarafından tasarlanmıştır.</p>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

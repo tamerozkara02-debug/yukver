@@ -7,6 +7,24 @@
       "imageHint": "highway truck"
     },
     {
+      "id": "hero-logistics-2",
+      "description": "A truck driving on a winding mountain road at dusk.",
+      "imageUrl": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx0cnVjayUyMHJvYWR8ZW58MHx8fHwxNzY4NTQwMzM0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "truck road"
+    },
+    {
+      "id": "hero-logistics-3",
+      "description": "Aerial view of a busy container port with ships and cranes.",
+      "imageUrl": "https://images.unsplash.com/photo-1576985396603-75a415655255?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxjb250YWluZXIlMjBwb3J0fGVufDB8fHx8MTc2ODU0MDM1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "container port"
+    },
+    {
+      "id": "hero-logistics-4",
+      "description": "Interior of a large, modern warehouse with shelves stacked with goods.",
+      "imageUrl": "https://images.unsplash.com/photo-1565610212246-41134591a5e0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3YXJlaG91c2V8ZW58MHx8fHwxNzY4NTQwMzgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "warehouse interior"
+    },
+    {
       "id": "avatar-company",
       "description": "Placeholder avatar for a company profile.",
       "imageUrl": "https://images.unsplash.com/photo-1531972111231-7482a960e109?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxvZmZpY2UlMjBidWlsZGluZ3xlbnwwfHx8fDE3Njg0NTcwOTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
