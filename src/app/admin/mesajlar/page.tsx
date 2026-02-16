@@ -31,9 +31,10 @@ export default function MesajlarPage() {
     // Fetch all messages for the current user
     const messagesQuery = useMemoFirebase(() => {
       if (!firestore || !user || !adminData) return null;
-      // Temporarily simplifying query for debugging permissions
+      // This query now correctly uses a security-rule-allowed filter
       return query(
         collection(firestore, 'messages'),
+        where('participantIds', 'array-contains', user.uid),
         orderBy('createdAt', 'asc')
       );
     }, [firestore, user, adminData]);
@@ -42,7 +43,6 @@ export default function MesajlarPage() {
     // Filter messages for the selected chat
     const chatMessages = useMemo(() => {
         if (!allMessages || !selectedPersonel) return [];
-        // Since we fetch all messages now, we have to filter them on the client
         return allMessages.filter(msg => 
             (msg.senderId === user?.uid && msg.receiverId === selectedPersonel.id) ||
             (msg.senderId === selectedPersonel.id && msg.receiverId === user?.uid)
@@ -86,7 +86,7 @@ export default function MesajlarPage() {
         return personelList.filter(p => p.id !== user.uid);
     }, [personelList, user]);
 
-    // Client-side filtering logic because the 'where' clause was removed from the query
+    // This logic correctly derives conversations from messages the user is part of.
     const conversations = useMemo(() => {
         if (!allMessages || !personelList || !user) return [];
 
@@ -97,7 +97,7 @@ export default function MesajlarPage() {
         for (const msg of allMessages) {
             const otherParticipantId = msg.participantIds.find((pId: string) => pId !== user.uid);
             if (otherParticipantId) {
-                if (!latestMessages[otherParticipantId] || msg.createdAt > latestMessages[otherParticipantId].createdAt) {
+                if (!latestMessages[otherParticipantId] || (msg.createdAt && latestMessages[otherParticipantId].createdAt && msg.createdAt.toMillis() > latestMessages[otherParticipantId].createdAt.toMillis())) {
                     latestMessages[otherParticipantId] = msg;
                 }
             }
@@ -108,10 +108,8 @@ export default function MesajlarPage() {
             personel: p,
             lastMessage: latestMessages[p.id] || null
         })).sort((a, b) => {
-            if (!a.lastMessage) return 1;
-            if (!b.lastMessage) return -1;
-            if (!a.lastMessage.createdAt) return 1;
-            if (!b.lastMessage.createdAt) return -1;
+            if (!a.lastMessage?.createdAt) return 1;
+            if (!b.lastMessage?.createdAt) return -1;
             return b.lastMessage.createdAt.toMillis() - a.lastMessage.createdAt.toMillis();
         });
 

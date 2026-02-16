@@ -21,9 +21,9 @@ import { useAdmin, type AdminPermissions } from '@/hooks/use-admin';
 
 export default function ManagementPage() {
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading: isAuthLoading } = useUser();
     const { toast } = useToast();
-    const { adminData } = useAdmin();
+    const { adminData, isLoading: isAdminLoading } = useAdmin();
 
     const [editingEntity, setEditingEntity] = useState<any>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +56,7 @@ export default function ManagementPage() {
     const driversCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'drivers') : null, [firestore, user, adminData]);
     const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
 
-    const isLoading = isLoadingPersonel || isLoadingFirms || isLoadingDrivers;
+    const isLoading = isAuthLoading || isAdminLoading || isLoadingPersonel || isLoadingFirms || isLoadingDrivers;
 
     const handleNewStaffPermissionChange = (permissionKey: keyof AdminPermissions, value: boolean) => {
         setNewStaffPermissions(prev => ({

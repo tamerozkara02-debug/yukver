@@ -34,7 +34,7 @@ const CLAIM_DURATION_MINUTES = 30;
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const { adminData, isLoading: isAdminLoading } = useAdmin();
   const { toast } = useToast();
 
@@ -55,7 +55,7 @@ export default function AdminUyelerPage() {
 
   const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
   const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
-  const { data: personel } = useCollection(personelCollection);
+  const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
   
   useEffect(() => {
     const timer = setInterval(() => {
@@ -95,7 +95,7 @@ export default function AdminUyelerPage() {
   }, [soforler, selectedDriverCity]);
 
 
-  const isLoading = isUserLoading || isLoadingFirms || isLoadingDrivers || isAdminLoading;
+  const isLoading = isAuthLoading || isLoadingFirms || isLoadingDrivers || isAdminLoading || isLoadingPersonel;
   const canManageMembers = adminData?.permissions?.canManageMembers;
 
   const handleClaimFirm = async (firmId: string) => {
@@ -221,8 +221,8 @@ export default function AdminUyelerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading && <TableRow><TableCell colSpan={5} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
-                  {!isLoading && filteredFirmalar?.map((firma: any) => {
+                  {isLoadingFirms && <TableRow><TableCell colSpan={5} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
+                  {!isLoadingFirms && filteredFirmalar?.map((firma: any) => {
                     const isClaimed = firma.claimedAt && (new Date().getTime() - firma.claimedAt.toDate().getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
                     const isClaimedByCurrentUser = isClaimed && firma.claimedByStaffId === user?.uid;
                     
@@ -257,7 +257,7 @@ export default function AdminUyelerPage() {
                         </TableRow>
                     )
                   })}
-                   {!isLoading && (!filteredFirmalar || filteredFirmalar.length === 0) && (
+                   {!isLoadingFirms && (!filteredFirmalar || filteredFirmalar.length === 0) && (
                     <TableRow><TableCell colSpan={5} className="text-center h-24">{selectedFirmCity === 'all' ? 'Kayıtlı firma bulunmuyor.' : 'Bu şehirde kayıtlı firma bulunmuyor.'}</TableCell></TableRow>
                   )}
                 </TableBody>
@@ -298,8 +298,8 @@ export default function AdminUyelerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading && <TableRow><TableCell colSpan={5} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
-                  {!isLoading && filteredSoforler?.map((sofor: any) => (
+                  {isLoadingDrivers && <TableRow><TableCell colSpan={5} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
+                  {!isLoadingDrivers && filteredSoforler?.map((sofor: any) => (
                     <TableRow key={sofor.id}>
                       <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
                       <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
@@ -318,7 +318,7 @@ export default function AdminUyelerPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                   {!isLoading && (!filteredSoforler || filteredSoforler.length === 0) && (
+                   {!isLoadingDrivers && (!filteredSoforler || filteredSoforler.length === 0) && (
                     <TableRow><TableCell colSpan={5} className="text-center h-24">{selectedDriverCity === 'all' ? 'Kayıtlı şoför bulunmuyor.' : 'Bu şehirde kayıtlı şoför bulunmuyor.'}</TableCell></TableRow>
                   )}
                 </TableBody>

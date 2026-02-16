@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function KonumTakibiPage() {
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading: isAuthLoading } = useUser();
   const { adminData, isLoading: isAdminLoading } = useAdmin();
 
   const driversCollection = useMemoFirebase(
@@ -23,7 +23,7 @@ export default function KonumTakibiPage() {
     return drivers?.filter(driver => driver.latitude && driver.longitude) || [];
   }, [drivers]);
 
-  const isLoading = isUserLoading || isLoadingDrivers || isAdminLoading;
+  const isLoading = isAuthLoading || isLoadingDrivers || isAdminLoading;
 
   if (isLoading) {
     return <div className="flex h-48 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;

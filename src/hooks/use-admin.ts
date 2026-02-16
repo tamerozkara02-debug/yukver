@@ -52,6 +52,8 @@ export function useAdmin() {
     let isMounted = true;
 
     const checkAdminStatus = async () => {
+      // Set loading to true before starting the async operation
+      setIsLoading(true);
       try {
         const docSnap = await getDoc(adminDocRef);
         if (isMounted) {

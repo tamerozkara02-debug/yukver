@@ -42,9 +42,9 @@ const defaultPermissions: AdminPermissions = {
 
 export default function AdminPersonelPage() {
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading: isAuthLoading } = useUser();
     const { toast } = useToast();
-    const { adminData } = useAdmin();
+    const { adminData, isLoading: isAdminLoading } = useAdmin();
 
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -215,6 +215,14 @@ export default function AdminPersonelPage() {
             setIsSubmitting(false);
         }
     };
+    
+    if (isAuthLoading || isAdminLoading) {
+      return (
+        <div className="flex h-48 w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
 
   return (
     <div>

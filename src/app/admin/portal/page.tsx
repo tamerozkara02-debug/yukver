@@ -26,7 +26,7 @@ const CLAIM_DURATION_MINUTES = 30;
 
 function PortalPageContents() {
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading: isAuthLoading } = useUser();
     const { adminData, isLoading: isAdminLoading } = useAdmin();
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,7 +59,7 @@ function PortalPageContents() {
     const personelCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'roles_admin') : null, [firestore, user, adminData]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
-    const isLoading = isAdminLoading || isCurrentAdminLoading || isLoadingLoads || isLoadingFirms || isLoadingAllDrivers || isLoadingPersonel;
+    const isLoading = isAuthLoading || isAdminLoading || isCurrentAdminLoading || isLoadingLoads || isLoadingFirms || isLoadingAllDrivers || isLoadingPersonel;
 
     // --- MEMOIZED DATA & FILTERS ---
     const liveStats = useMemo(() => [
@@ -427,9 +427,3 @@ export default function PortalPage() {
         </Suspense>
     )
 }
-
-    
-
-    
-
-
