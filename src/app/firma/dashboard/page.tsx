@@ -379,14 +379,6 @@ export default function FirmaDashboard() {
       setIsEditDialogOpen(open);
   }
 
-  if (isUserLoading || !user || isFirmLoading) {
-    return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
-            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-        </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-muted/40">
       <header className="bg-card border-b sticky top-0 z-10">
