@@ -6,7 +6,6 @@ import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/ca
 import { Truck, Building, ArrowRight, User, LogIn, Briefcase, UserCog } from 'lucide-react';
 import Image from 'next/image';
 import { placeholderImages } from '@/lib/placeholder-images';
-import { MacazekaChat } from '@/components/macazeka-chat';
 import {
   Tooltip,
   TooltipContent,
@@ -181,7 +180,6 @@ export default function Home() {
           </TooltipProvider>
         </div>
       </footer>
-      <MacazekaChat />
     </div>
   );
 }
