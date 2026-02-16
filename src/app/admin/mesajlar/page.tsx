@@ -12,10 +12,12 @@ import { Loader2, Send, Bot, User as UserIcon, MessageSquare } from 'lucide-reac
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
+import { useAdmin } from '@/hooks/use-admin';
 
 export default function MesajlarPage() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const { adminData } = useAdmin();
 
     const [selectedPersonel, setSelectedPersonel] = useState<any>(null);
     const [message, setMessage] = useState('');
@@ -23,18 +25,18 @@ export default function MesajlarPage() {
     const scrollAreaRef = useRef<HTMLDivElement>(null);
 
     // Fetch all personnel
-    const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
+    const personelCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'roles_admin') : null, [firestore, user, adminData]);
     const { data: personelList, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
     // Fetch all messages for the current user
     const messagesQuery = useMemoFirebase(() => {
-      if (!firestore || !user) return null;
+      if (!firestore || !user || !adminData) return null;
       // Temporarily simplifying query for debugging permissions
       return query(
         collection(firestore, 'messages'),
         orderBy('createdAt', 'asc')
       );
-    }, [firestore, user]);
+    }, [firestore, user, adminData]);
     const { data: allMessages, isLoading: isLoadingMessages } = useCollection(messagesQuery);
 
     // Filter messages for the selected chat

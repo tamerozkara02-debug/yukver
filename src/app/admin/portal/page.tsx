@@ -47,16 +47,16 @@ function PortalPageContents() {
     const adminDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user]);
     const { data: currentAdminData, isLoading: isCurrentAdminLoading } = useDoc(adminDocRef);
     
-    const loadsQuery = useMemoFirebase(() => (firestore && user) ? collectionGroup(firestore, 'loads') : null, [firestore, user]);
+    const loadsQuery = useMemoFirebase(() => (firestore && user && adminData) ? collectionGroup(firestore, 'loads') : null, [firestore, user, adminData]);
     const { data: loads, isLoading: isLoadingLoads } = useCollection(loadsQuery);
     
-    const firmsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
+    const firmsQuery = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'firms') : null, [firestore, user, adminData]);
     const { data: firms, isLoading: isLoadingFirms } = useCollection(firmsQuery);
 
-    const allDriversQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
+    const allDriversQuery = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'drivers') : null, [firestore, user, adminData]);
     const { data: allDrivers, isLoading: isLoadingAllDrivers } = useCollection(allDriversQuery);
     
-    const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
+    const personelCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'roles_admin') : null, [firestore, user, adminData]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
     const isLoading = isAdminLoading || isCurrentAdminLoading || isLoadingLoads || isLoadingFirms || isLoadingAllDrivers || isLoadingPersonel;
@@ -431,4 +431,5 @@ export default function PortalPage() {
     
 
     
+
 

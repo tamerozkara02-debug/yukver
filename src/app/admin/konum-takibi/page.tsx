@@ -14,8 +14,8 @@ export default function KonumTakibiPage() {
   const { adminData, isLoading: isAdminLoading } = useAdmin();
 
   const driversCollection = useMemoFirebase(
-    () => (firestore && user ? collection(firestore, 'drivers') : null),
-    [firestore, user]
+    () => (firestore && user && adminData ? collection(firestore, 'drivers') : null),
+    [firestore, user, adminData]
   );
   const { data: drivers, isLoading: isLoadingDrivers } = useCollection(driversCollection);
 
