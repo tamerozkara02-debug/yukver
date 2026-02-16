@@ -34,6 +34,7 @@ import {
   Star,
   MessageSquare,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import {
   useAuth,
@@ -130,6 +131,12 @@ export default function FirmaDashboard() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.replace('/giris');
+    }
+  }, [user, isUserLoading, router]);
 
   // Fetch drivers for the review dropdown
   useEffect(() => {
@@ -372,8 +379,12 @@ export default function FirmaDashboard() {
       setIsEditDialogOpen(open);
   }
 
-  if (isUserLoading || isFirmLoading) {
-    return <div>Yükleniyor...</div>;
+  if (isUserLoading || !user || isFirmLoading) {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+    );
   }
 
   return (

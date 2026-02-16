@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { placeholderImages } from '@/lib/placeholder-images';
-import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera, Save, MessageSquare, Star, AlertCircle } from 'lucide-react';
+import { LogOut, Phone, Truck, UserCircle, MapPin, LocateFixed, ToggleLeft, ToggleRight, Edit, Camera, Save, MessageSquare, Star, AlertCircle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useAuth, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, serverTimestamp, updateDoc, collection, addDoc, getDocs } from 'firebase/firestore';
@@ -66,6 +66,12 @@ export default function SoforDashboard() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.replace('/giris');
+    }
+  }, [user, isUserLoading, router]);
 
   // Fetch firms for the review dropdown
   useEffect(() => {
@@ -394,8 +400,12 @@ export default function SoforDashboard() {
       setIsEditDialogOpen(open);
   }
 
-  if (isUserLoading || isDriverLoading) {
-    return <div>Yükleniyor...</div>;
+  if (isUserLoading || !user || isDriverLoading) {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+    );
   }
   
   if (error) {
