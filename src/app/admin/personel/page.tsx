@@ -63,7 +63,7 @@ export default function AdminPersonelPage() {
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
+    const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
     const handleNewStaffPermissionChange = (permissionKey: keyof AdminPermissions, value: boolean) => {

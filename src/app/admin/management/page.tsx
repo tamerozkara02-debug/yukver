@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import { type AdminPermissions } from '@/hooks/use-admin';
 
 export default function ManagementPage() {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
 
     const [editingEntity, setEditingEntity] = useState<any>(null);
@@ -45,13 +46,13 @@ export default function ManagementPage() {
     const [newStaffPermissions, setNewStaffPermissions] = useState<AdminPermissions>(defaultPermissions);
 
     // Data fetching
-    const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
+    const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
 
-    const firmsCollection = useMemoFirebase(() => firestore ? collection(firestore, 'firms') : null, [firestore]);
+    const firmsCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
     const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
 
-    const driversCollection = useMemoFirebase(() => firestore ? collection(firestore, 'drivers') : null, [firestore]);
+    const driversCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
     const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
 
     const isLoading = isLoadingPersonel || isLoadingFirms || isLoadingDrivers;

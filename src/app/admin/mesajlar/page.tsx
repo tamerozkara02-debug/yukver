@@ -23,7 +23,7 @@ export default function MesajlarPage() {
     const scrollAreaRef = useRef<HTMLDivElement>(null);
 
     // Fetch all personnel
-    const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
+    const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
     const { data: personelList, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
     // Fetch all messages for the current user

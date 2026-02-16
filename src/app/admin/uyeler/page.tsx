@@ -51,7 +51,7 @@ export default function AdminUyelerPage() {
 
   const firmsCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
   const driversCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
-  const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
+  const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
 
   const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
   const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);

@@ -47,16 +47,16 @@ function PortalPageContents() {
     const adminDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user]);
     const { data: currentAdminData, isLoading: isCurrentAdminLoading } = useDoc(adminDocRef);
     
-    const loadsQuery = useMemoFirebase(() => firestore ? collectionGroup(firestore, 'loads') : null, [firestore]);
+    const loadsQuery = useMemoFirebase(() => (firestore && user) ? collectionGroup(firestore, 'loads') : null, [firestore, user]);
     const { data: loads, isLoading: isLoadingLoads } = useCollection(loadsQuery);
     
-    const firmsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'firms') : null, [firestore]);
+    const firmsQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'firms') : null, [firestore, user]);
     const { data: firms, isLoading: isLoadingFirms } = useCollection(firmsQuery);
 
-    const allDriversQuery = useMemoFirebase(() => firestore ? collection(firestore, 'drivers') : null, [firestore]);
+    const allDriversQuery = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'drivers') : null, [firestore, user]);
     const { data: allDrivers, isLoading: isLoadingAllDrivers } = useCollection(allDriversQuery);
     
-    const personelCollection = useMemoFirebase(() => firestore ? collection(firestore, 'roles_admin') : null, [firestore]);
+    const personelCollection = useMemoFirebase(() => (firestore && user) ? collection(firestore, 'roles_admin') : null, [firestore, user]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
     
     const isLoading = isAdminLoading || isCurrentAdminLoading || isLoadingLoads || isLoadingFirms || isLoadingAllDrivers || isLoadingPersonel;
@@ -431,3 +431,4 @@ export default function PortalPage() {
     
 
     
+
