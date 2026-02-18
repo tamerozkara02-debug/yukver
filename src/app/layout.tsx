@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
+// Deployment trigger: 2024-02-16-v1
 export const metadata: Metadata = {
   title: 'MAÇA LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
