@@ -1,6 +1,7 @@
+
 {
   "name": "nextn",
-  "version": "0.1.0",
+  "version": "0.1.30",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,8 +10,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@genkit-ai/google-genai": "1.0.0",
-    "genkit": "1.0.0",
+    "next": "14.2.24",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "genkit": "^1.0.0",
+    "@genkit-ai/google-genai": "^1.0.0",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
@@ -41,10 +45,7 @@
     "firebase": "^10.12.3",
     "lodash": "^4.17.21",
     "lucide-react": "^0.475.0",
-    "next": "14.2.35",
-    "react": "18.3.1",
     "react-day-picker": "^8.10.1",
-    "react-dom": "18.3.1",
     "recharts": "^2.15.1",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
