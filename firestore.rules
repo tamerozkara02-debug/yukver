@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -72,7 +73,8 @@ service cloud.firestore {
     match /roles_admin/{userId} {
         allow get: if isOwner(userId) || userIsAdmin();
         allow list: if userIsAdmin();
-        allow create: if userIsAdmin() && getAdminPermissions().canManageStaff == true;
+        // Special case: allow the super admin email to bootstrap the first admin document
+        allow create: if (userIsAdmin() && getAdminPermissions().canManageStaff == true) || (request.auth.token.email == 'tamerozkara02@gmail.com');
         allow update: if isOwner(userId) || (userIsAdmin() && getAdminPermissions().canManageStaff == true);
         allow delete: if userIsAdmin() && getAdminPermissions().canManageStaff == true;
     }

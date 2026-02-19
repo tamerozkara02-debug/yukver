@@ -1,10 +1,10 @@
 
-import type {Metadata} from 'metadata';
+import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment trigger: 2025-02-19-v34 - Forcing a clean install to resolve ENOTEMPTY filesystem lock
+// Deployment trigger: 2025-02-19-v35 - Forcing clean install to resolve ENOTEMPTY lock
 export const metadata: Metadata = {
   title: 'MAÇA LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
