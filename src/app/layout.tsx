@@ -4,7 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment trigger: 2025-02-19-v33 - Resolving ENOTEMPTY error via clean install
+// Deployment trigger: 2025-02-19-v34 - Forcing a clean install to resolve ENOTEMPTY filesystem lock
 export const metadata: Metadata = {
   title: 'MAÇA LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
