@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment build trigger: 2024-02-16-v6 - Production fix for package.json integrity
+// Deployment trigger: 2024-02-18-v28 - Fixing Genkit package version conflicts
 export const metadata: Metadata = {
   title: 'MAÇA LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
