@@ -22,7 +22,7 @@ export default function Home() {
       <header className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <Truck className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold text-foreground font-headline">MAÇA LOJİSTİK MERKEZİ</h1>
+          <h1 className="text-2xl font-bold text-foreground font-headline">YÜKVER LOJİSTİK</h1>
         </div>
         <nav className="hidden md:flex items-center gap-4">
           <Button variant="ghost" asChild>
@@ -58,7 +58,7 @@ export default function Home() {
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
             <h2 className="text-4xl md:text-6xl font-bold font-headline text-foreground">Türkiye'nin Yükü Burada</h2>
             <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
-              İster yük veren bir firma, ister güvenilir bir şoför olun. MAÇA LOJİSTİK MERKEZİ, tüm taşıma ihtiyaçlarınız için modern ve hızlı çözümler sunar.
+              İster yük veren bir firma, ister güvenilir bir şoför olun. YÜKVER LOJİSTİK MERKEZİ, tüm taşıma ihtiyaçlarınız için modern ve hızlı çözümler sunar.
             </p>
             <div className="mt-8 flex justify-center gap-4">
               <Button size="lg" asChild>
@@ -108,7 +108,7 @@ export default function Home() {
             <div className="grid md:grid-cols-2 gap-8 md:gap-16 items-center">
               <div>
                 <h3 className="text-3xl md:text-4xl font-bold font-headline">Aradığınız Her Şey Tek Platformda</h3>
-                <p className="mt-4 text-muted-foreground">MAÇA LOJİSTİK MERKEZİ, yük veren firmalar ile nakliyecileri profesyonel bir çağrı merkezi operasyonuyla bir araya getirir. Güvenli, hızlı ve verimli taşımacılığın yeni adresi.</p>
+                <p className="mt-4 text-muted-foreground">YÜKVER LOJİSTİK MERKEZİ, yük veren firmalar ile nakliyecileri profesyonel bir çağrı merkezi operasyonuyla bir araya getirir. Güvenli, hızlı ve verimli taşımacılığın yeni adresi.</p>
                 <div className="mt-6 space-y-4">
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10 text-primary">
@@ -163,7 +163,7 @@ export default function Home() {
 
       <footer className="bg-background border-t">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center gap-2 text-muted-foreground text-sm">
-          <p>&copy; {new Date().getFullYear()} MAÇA LOJİSTİK MERKEZİ. Tüm hakları saklıdır.</p>
+          <p>&copy; {new Date().getFullYear()} YÜKVER LOJİSTİK MERKEZİ. Tüm hakları saklıdır.</p>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>

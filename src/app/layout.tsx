@@ -3,9 +3,9 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment trigger: 2025-02-19-v36 - Forced clean install to resolve lockfile conflict and ENOTEMPTY error
+// Deployment trigger: 2025-02-19-v43 - Branding update to YÜKVER and forced clean install
 export const metadata: Metadata = {
-  title: 'MAÇA LOJİSTİK MERKEZİ',
+  title: 'YÜKVER LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
 };
 
