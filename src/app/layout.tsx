@@ -1,9 +1,10 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment trigger: 2025-02-19-v43 - Branding update to YÜKVER and forced clean install
+// Deployment trigger: 2025-02-19-v51 - Resetting build to replace placeholder page
 export const metadata: Metadata = {
   title: 'YÜKVER LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
