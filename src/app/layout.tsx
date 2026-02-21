@@ -4,7 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment trigger: 2025-02-19-v51 - Resetting build to replace placeholder page
+// Deployment trigger: 2025-02-19-v55 - Preparing for GitHub & App Hosting connection
 export const metadata: Metadata = {
   title: 'YÜKVER LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
