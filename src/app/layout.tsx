@@ -1,10 +1,9 @@
-
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment trigger: 2025-02-19-v55 - Preparing for GitHub & App Hosting connection
+// Deployment trigger: 2025-02-19-v76 - API Key Refresh & Build Reset
 export const metadata: Metadata = {
   title: 'YÜKVER LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',

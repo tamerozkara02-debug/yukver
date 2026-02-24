@@ -23,65 +23,72 @@ service cloud.firestore {
     // Collection Rules
     //-//////////////////////////////////////////////////
 
-    // FIRMS: Public read, only owner or an admin with permissions can write/update.
+    // ROLES_ADMIN: Personel yetki kontrolü
+    match /roles_admin/{userId} {
+      // Herkes SADECE kendi personel dokümanını okuyabilir (admin olup olmadığını anlamak için)
+      allow get: if request.auth != null && request.auth.uid == userId;
+
+      // Sadece personel yönetme yetkisi olan adminler listeleme yapabilir
+      allow list: if request.auth != null 
+        && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
+        && get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.permissions.canManageStaff == true;
+
+      // CREATE Kuralları:
+      // 1. Super Admin (tamerozkara02@gmail.com) SADECE kendi UID'si için doküman oluşturabilir (Bootstrap)
+      // 2. canManageStaff yetkisi olan adminler diğer personel dokümanlarını oluşturabilir
+      allow create: if request.auth != null && (
+        (request.auth.uid == userId && request.auth.token.email == 'tamerozkara02@gmail.com')
+        ||
+        (exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
+        && get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.permissions.canManageStaff == true)
+      );
+
+      // UPDATE/DELETE Kuralları:
+      // Sadece canManageStaff yetkisi olan adminler işlem yapabilir. 
+      // Kendi dokümanını güncelleme yetkisi kapatıldı (yetki yükseltme açığı için).
+      allow update, delete: if request.auth != null 
+        && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid))
+        && get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.permissions.canManageStaff == true;
+    }
+
+    // FIRMS: Kamu okuma, sadece sahip veya yetkili admin yazabilir.
     match /firms/{firmId} {
       allow get, list: if request.auth != null;
       allow create: if isOwner(firmId);
       allow update: if isOwner(firmId) || (userIsAdmin() && getAdminPermissions().canManageMembers == true);
       allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
       
-      // LOADS: Owners can manage their own loads. Admins can also manage them.
       match /loads/{loadId} {
         allow read: if request.auth != null;
         allow create: if isOwner(firmId);
-        allow update: if isOwner(firmId) || userIsAdmin(); // Any admin can update (e.g., to claim)
+        allow update: if isOwner(firmId) || userIsAdmin();
         allow delete: if isOwner(firmId) || (userIsAdmin() && getAdminPermissions().canManageMembers == true);
       }
     }
     
-    // DRIVERS: Public read, only owner can write/update their own document
+    // DRIVERS: Kamu okuma, sadece sahip veya yetkili admin silebilir.
     match /drivers/{driverId} {
-      allow get: if request.auth != null;
-      allow list: if request.auth != null;
+      allow get, list: if request.auth != null;
       allow create: if isOwner(driverId);
       allow update: if isOwner(driverId);
       allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
     }
     
-    // Allow admins to list all loads via a collection group query for the 'ilanlar' page.
+    // Koleksiyon grubu sorguları için
     match /{path=**}/loads/{loadId} {
       allow read: if userIsAdmin();
     }
     
-    // REVIEWS: Authenticated users can create reviews.
-    // Only admins can read, update, or delete them, as they are for internal purposes.
     match /reviews/{reviewId} {
       allow create: if request.auth != null;
       allow read, update, delete: if userIsAdmin();
     }
 
-    // MESSAGES: Users can create messages. They can read specific messages they are part of.
     match /messages/{messageId} {
       allow create: if request.auth != null && request.resource.data.senderId == request.auth.uid && request.auth.uid in request.resource.data.participantIds;
       allow get: if request.auth != null && request.auth.uid in resource.data.participantIds;
-      // Admins can list messages they are a part of.
       allow list: if request.auth != null && request.auth.uid == request.query.where[0][2];
       allow update, delete: if false;
     }
-
-    // ROLES_ADMIN: Users can read their own admin status. An admin with canManageStaff can manage roles.
-    match /roles_admin/{userId} {
-        allow get: if isOwner(userId) || userIsAdmin();
-        allow list: if userIsAdmin();
-        // Special case: allow the super admin email to bootstrap the first admin document
-        allow create: if (userIsAdmin() && getAdminPermissions().canManageStaff == true) || (request.auth.token.email == 'tamerozkara02@gmail.com');
-        allow update: if isOwner(userId) || (userIsAdmin() && getAdminPermissions().canManageStaff == true);
-        allow delete: if userIsAdmin() && getAdminPermissions().canManageStaff == true;
-    }
-    
-    // Default rule: Deny all reads and writes by default.
-    // match /{document=**} {
-    //   allow read, write: if false;
-    // }
   }
 }

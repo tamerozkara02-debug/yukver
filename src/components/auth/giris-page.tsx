@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -18,12 +19,16 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
+  createUserWithEmailAndPassword,
+  type User,
 } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 type Role = 'firma' | 'sofor' | 'admin';
+
+const SUPER_ADMIN_EMAIL = 'tamerozkara02@gmail.com';
 
 const roleDetails = {
     firma: {
@@ -70,6 +75,36 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
   const [isLoading, setIsLoading] = useState(false);
 
   const details = roleDetails[initialRole];
+
+  /**
+   * Sadece Super Admin için ilk kurulum (Bootstrap) mantığı.
+   * Client tarafında rol oluşturma sadece super admin UID'si için kurallar tarafından izinlidir.
+   */
+  const setupSuperAdminDocIfMissing = async (user: User) => {
+    if (!firestore || user.email?.toLowerCase() !== SUPER_ADMIN_EMAIL) return;
+    
+    const adminRef = doc(firestore, 'roles_admin', user.uid);
+    try {
+        const docSnap = await getDoc(adminRef);
+        if (!docSnap.exists()) {
+            await setDoc(adminRef, {
+                id: user.uid,
+                username: user.email,
+                permissions: {
+                    canViewDashboard: true,
+                    canTrackLocations: true,
+                    canManageMembers: true,
+                    canManageStaff: true
+                },
+                firstName: 'Üst',
+                lastName: 'Yönetici'
+            });
+            console.log("Super admin doc created via bootstrap.");
+        }
+    } catch (e: any) {
+        console.error("Bootstrap error (Super Admin):", e.code, e.message);
+    }
+  }
   
   const handlePasswordReset = async () => {
     if (!email) {
@@ -88,14 +123,11 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
         description: 'Şifre sıfırlama talimatları için lütfen e-posta kutunuzu kontrol edin.',
       });
     } catch (error: any) {
-      let description = 'Şifre sıfırlama e-postası gönderilemedi.';
-      if (error.code === 'auth/user-not-found') {
-        description = 'Bu e-posta adresi ile kayıtlı bir kullanıcı bulunamadı.';
-      }
+      console.error("Password reset error:", error.code, error.message);
       toast({
         variant: 'destructive',
         title: 'Hata',
-        description,
+        description: `Şifre sıfırlama e-postası gönderilemedi: ${error.code}`,
       });
     } finally {
       setIsLoading(false);
@@ -106,27 +138,17 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
   const checkUserRole = async (userId: string, expectedRole: Role): Promise<boolean> => {
     if (!firestore) return false;
     
-    let docPath: string;
-    switch (expectedRole) {
-        case 'firma':
-            docPath = `firms/${userId}`;
-            break;
-        case 'sofor':
-            docPath = `drivers/${userId}`;
-            break;
-        case 'admin':
-            docPath = `roles_admin/${userId}`;
-            break;
-        default:
-            return false;
-    }
-
     try {
-        const docRef = doc(firestore, docPath);
-        const docSnap = await getDoc(docRef);
+        if (expectedRole === 'admin') {
+            const adminSnap = await getDoc(doc(firestore, 'roles_admin', userId));
+            return adminSnap.exists();
+        }
+
+        const docPath = expectedRole === 'firma' ? `firms/${userId}` : `drivers/${userId}`;
+        const docSnap = await getDoc(doc(firestore, docPath));
         return docSnap.exists();
-    } catch (error) {
-        console.error(`Error checking role '${expectedRole}' for user ${userId}:`, error);
+    } catch (error: any) {
+        console.error("Role check error:", error.code, error.message);
         return false;
     }
   }
@@ -134,107 +156,63 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-        toast({
-            variant: 'destructive',
-            title: 'Hata',
-            description: 'Lütfen email ve şifrenizi girin.',
-        });
+        toast({ variant: 'destructive', title: 'Hata', description: 'Lütfen email ve şifrenizi girin.' });
         return;
     }
     
     setIsLoading(true);
-    try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+    const normalizedEmail = email.trim().toLowerCase();
+    const isSuperAdmin = normalizedEmail === SUPER_ADMIN_EMAIL;
 
-        // Super admin check
-        if (user.email === 'tamerozkara02@gmail.com') {
-            toast({
-                title: 'Üst Yönetici Girişi Başarılı',
-                description: 'Özel yönetim paneline yönlendiriliyorsunuz...',
-            });
-            router.push('/admin/management');
-            return; // Stop further execution
+    try {
+        let userCredential;
+        try {
+            userCredential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+        } catch (authError: any) {
+            console.error("Auth Login error:", authError.code, authError.message);
+            // Super admin için otomatik hesap oluşturma (eğer henüz yoksa)
+            if (isSuperAdmin && (authError.code === 'auth/user-not-found' || authError.code === 'auth/invalid-credential' || authError.code === 'auth/invalid-email')) {
+                try {
+                    userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+                } catch (createError: any) {
+                    throw authError;
+                }
+            } else {
+                throw authError;
+            }
         }
 
+        const user = userCredential.user;
+        
+        // Super admin ise her zaman içeri al ve dokümanı kontrol et
+        if (isSuperAdmin) {
+            await setupSuperAdminDocIfMissing(user);
+            toast({ title: 'Hoş Geldiniz', description: 'Üst Yönetici girişi yapıldı.' });
+            router.push('/admin/portal');
+            return;
+        }
+
+        // Diğer roller için doğrulama
         const isRoleCorrect = await checkUserRole(user.uid, initialRole);
 
         if (isRoleCorrect) {
-            toast({
-                title: 'Başarılı',
-                description: 'Giriş yapıldı, yönlendiriliyorsunuz...',
-            });
+            toast({ title: 'Başarılı', description: 'Yönlendiriliyorsunuz...' });
             router.push(details.dashboard);
         } else {
-            // Self-healing for admin accounts with missing roles.
-            if (initialRole === 'admin' && firestore) {
-                toast({
-                    title: 'Hesap Yapılandırılıyor',
-                    description: 'Eksik personel rolü algılandı ve şimdi oluşturuluyor. Lütfen bekleyin...',
-                });
-                try {
-                    const adminRef = doc(firestore, 'roles_admin', user.uid);
-                    await setDoc(adminRef, {
-                        id: user.uid,
-                        username: user.email,
-                        permissions: { // Give full permissions to fix the lockout
-                            canViewDashboard: true,
-                            canTrackLocations: true,
-                            canManageMembers: true,
-                            canManageStaff: true
-                        }
-                    });
-                    toast({
-                        title: 'Başarılı',
-                        description: 'Personel rolü başarıyla oluşturuldu. Yönlendiriliyorsunuz...',
-                    });
-                    router.push(details.dashboard);
-                } catch (dbError) {
-                    console.error("Failed to create admin role doc:", dbError);
-                    await auth.signOut();
-                    toast({
-                        variant: 'destructive',
-                        title: 'Yapılandırma Başarısız',
-                        description: 'Personel rolü oluşturulamadı. Veritabanı yazma yetkisi sorunu olabilir.',
-                    });
-                }
-                return; // Stop execution here after attempting self-heal
-            }
-
              await auth.signOut();
-             
-             let attemptedRoleName = details.name;
-             let existingRoleName: string | null = null;
-             
-             const isFirma = await checkUserRole(user.uid, 'firma');
-             if (isFirma) {
-                existingRoleName = "Firma";
-             }
-             const isSofor = await checkUserRole(user.uid, 'sofor');
-             if (isSofor) {
-                existingRoleName = "Şoför";
-             }
-             const isAdmin = await checkUserRole(user.uid, 'admin');
-               if (isAdmin) {
-                existingRoleName = "Personel";
-             }
-
-            if (existingRoleName) {
-                 toast({ variant: 'destructive', title: 'Hatalı Rol', description: `Bu hesap bir ${existingRoleName} hesabıdır. Lütfen doğru sekmeden giriş yapın.` });
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Hata',
-                    description: `Bu kimlik bilgileriyle bir '${attemptedRoleName}' hesabı bulunamadı.`,
-                });
-            }
+             toast({ 
+                variant: 'destructive', 
+                title: 'Erişim Engellendi', 
+                description: `Bu hesap için ${details.name} yetkisi bulunamadı.` 
+             });
         }
     } catch (error: any) {
-         toast({
-            variant: 'destructive',
-            title: 'Giriş Başarısız',
-            description: 'Email veya şifre hatalı.',
-        });
+         console.error("General Login Error:", error.code, error.message);
+         toast({ 
+            variant: 'destructive', 
+            title: 'Giriş Başarısız', 
+            description: `Hata: ${error.code} - ${error.message}` 
+         });
     } finally {
         setIsLoading(false);
     }
@@ -246,90 +224,42 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
     try {
         const userCredential = await signInWithPopup(auth, provider);
         const user = userCredential.user;
+        const normalizedEmail = user.email?.toLowerCase() || '';
+        const isSuperAdmin = normalizedEmail === SUPER_ADMIN_EMAIL;
 
-        // Super admin check
-        if (user.email === 'tamerozkara02@gmail.com') {
-            toast({
-                title: 'Üst Yönetici Girişi Başarılı',
-                description: 'Özel yönetim paneline yönlendiriliyorsunuz...',
-            });
-            router.push('/admin/management');
+        if (isSuperAdmin) {
+            await setupSuperAdminDocIfMissing(user);
+            toast({ title: 'Hoş Geldiniz', description: 'Üst Yönetici girişi yapıldı.' });
+            router.push('/admin/portal');
             return;
         }
 
         const hasCorrectRole = await checkUserRole(user.uid, initialRole);
 
         if (hasCorrectRole) {
-            toast({ title: 'Başarılı', description: 'Giriş yapıldı, yönlendiriliyorsunuz...' });
+            toast({ title: 'Başarılı', description: 'Giriş yapıldı.' });
             router.push(details.dashboard);
             return;
         }
 
-        // Check if user exists with another role
-        const otherRoles = (['firma', 'sofor', 'admin'] as Role[]).filter(r => r !== initialRole);
-        for (const role of otherRoles) {
-            if (await checkUserRole(user.uid, role)) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Hatalı Rol',
-                    description: `Bu hesap bir ${roleDetails[role].name} hesabıdır. Lütfen doğru sekmeden giriş yapın.`
-                });
-                setIsLoading(false);
-                return;
-            }
-        }
-        
-        // If we reach here, user is new. Create their profile.
-        toast({ title: 'Hoş geldiniz!', description: `${details.name} profiliniz oluşturuluyor...` });
-
-        const [firstName, ...lastNameParts] = user.displayName?.split(' ') || ['', ''];
-        const lastName = lastNameParts.join(' ');
-        
-        let profileData: any;
-        let collectionName: string = '';
-
-        if (initialRole === 'firma') {
-            collectionName = 'firms';
-            profileData = {
-                id: user.uid,
-                firstName: firstName || '',
-                lastName: lastName || '',
-                profilePicture: user.photoURL || '',
-                phoneNumber: user.phoneNumber || '',
-                city: '',
-                district: '',
-                taxOffice: '',
-                taxNumber: ''
-            };
-        } else if (initialRole === 'sofor') {
-            collectionName = 'drivers';
-            profileData = {
-                id: user.uid,
-                firstName: firstName || '',
-                lastName: lastName || '',
-                profilePicture: user.photoURL || '',
-                phoneNumber: user.phoneNumber || '',
-                vehicleType: '',
-                vehiclePlate: ''
-            };
-        } else {
-             // This case should not be hit from the main login page for Google sign-in
-             toast({ variant: 'destructive', title: 'Hata', description: 'Geçersiz rol.' });
+        if (initialRole === 'admin') {
+             toast({ 
+                variant: 'destructive', 
+                title: 'Yetki Hatası', 
+                description: 'Personel hesabı bulunamadı. Lütfen yöneticinizle iletişime geçin.' 
+             });
+             await auth.signOut();
              setIsLoading(false);
              return;
         }
-        
-        await setDoc(doc(firestore, collectionName, user.uid), profileData);
-        toast({ title: 'Profil Oluşturuldu', description: 'Panele yönlendiriliyorsunuz.' });
-        router.push(details.dashboard);
+
+        // Firma/Şoför için profil eksikse yönlendirmeden önce hata ver (Kayıtlı olmaları gerekir)
+        toast({ variant: 'destructive', title: 'Hesap Bulunamadı', description: 'Lütfen önce kayıt olun.' });
+        await auth.signOut();
 
     } catch (error: any) {
-        console.error("Google Sign-In Error:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Giriş Başarısız',
-            description: 'Google ile giriş sırasında bir hata oluştu.',
-        });
+        console.error("Google Sign-In Error:", error.code, error.message);
+        toast({ variant: 'destructive', title: 'Giriş Başarısız', description: `Google hatası: ${error.code}` });
     } finally {
         setIsLoading(false);
     }
@@ -364,7 +294,7 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             <Input
                 id={`${initialRole}-email`}
                 type="email"
-                placeholder={initialRole === 'firma' ? "ornek@sirket.com" : "ornek@mail.com"}
+                placeholder="ornek@mail.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -372,12 +302,11 @@ export function GirisPage({ initialRole }: { initialRole: Role}) {
             />
             </div>
             <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <Label htmlFor={`${initialRole}-password`}>Şifre</Label>
-                </div>
+                <Label htmlFor={`${initialRole}-password`}>Şifre</Label>
                 <Input id={`${initialRole}-password`} type="password" required 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                     disabled={isLoading}
                 />
             </div>

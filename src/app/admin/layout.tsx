@@ -1,3 +1,4 @@
+
 "use client"
 
 import {
@@ -14,14 +15,14 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { Truck, LayoutDashboard, Users, UserCog, LogOut, Map, Loader2, Briefcase, Shield, MessageSquare } from "lucide-react"
+import { Truck, LayoutDashboard, Users, UserCog, LogOut, Map, Loader2, Shield, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth, useUser } from "@/firebase"
 import { signOut } from "firebase/auth"
 import { useAdmin } from "@/hooks/use-admin"
-import { useToast } from "@/hooks/use-toast"
+import { useEffect, useState } from "react"
 
-type PermissionKey = 'canViewDashboard' | 'canTrackLocations' | 'canManageMembers' | 'canManageStaff';
+const SUPER_ADMIN_EMAIL = 'tamerozkara02@gmail.com';
 
 export default function AdminLayout({
   children,
@@ -31,9 +32,9 @@ export default function AdminLayout({
   const pathname = usePathname()
   const router = useRouter();
   const auth = useAuth();
-  const { user } = useUser();
-  const { isAdmin, adminData, isLoading: isAdminLoading } = useAdmin();
-  const { toast } = useToast();
+  const { user, isUserLoading } = useUser();
+  const { isAdmin, adminData, isLoading: isAdminDataLoading } = useAdmin();
+  const [isReady, setIsReady] = useState(false);
 
   const isActive = (path: string) => pathname.startsWith(path);
 
@@ -43,23 +44,37 @@ export default function AdminLayout({
     }
     router.push('/giris');
   }
+
+  // Patience effect: Give Firestore and Auth a moment to settle
+  useEffect(() => {
+    if (!isUserLoading && !isAdminDataLoading) {
+      const timer = setTimeout(() => setIsReady(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isUserLoading, isAdminDataLoading]);
   
   if (pathname === '/admin/giris') {
     return <>{children}</>;
   }
 
-  if (isAdminLoading) {
+  // Show loader while checking auth and admin status
+  if (isUserLoading || isAdminDataLoading || !isReady) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="flex h-screen w-full items-center justify-center bg-background text-foreground">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Yetkiniz kontrol ediliyor...</p>
+          <p className="text-muted-foreground animate-pulse">Sistem hazırlanıyor, lütfen bekleyin...</p>
         </div>
       </div>
     );
   }
 
-  if (!isAdmin) {
+  // Super Admin check: If it's the super admin email, we allow them through even if isAdmin is false 
+  // because the doc might be being created in the background.
+  const isSuperAdmin = user?.email?.toLowerCase() === SUPER_ADMIN_EMAIL;
+
+  // If definitely not an admin after loading is done and not the super admin
+  if (!isAdmin && !isSuperAdmin) {
      return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4 text-center p-4">
@@ -77,12 +92,12 @@ export default function AdminLayout({
         <SidebarHeader>
             <div className="flex items-center gap-2 p-2">
                 <Truck className="h-8 w-8 text-primary" />
-                <h1 className="text-xl font-bold text-foreground font-headline">YÜKVER MERKEZİ</h1>
+                <h1 className="text-xl font-bold text-foreground font-headline uppercase">YÜKVER MERKEZİ</h1>
             </div>
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-             {user?.email === 'tamerozkara02@gmail.com' && (
+             {isSuperAdmin && (
                <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={isActive("/admin/management")}>
                     <Link href="/admin/management">
@@ -109,7 +124,7 @@ export default function AdminLayout({
                 </SidebarMenuButton>
             </SidebarMenuItem>
 
-            {adminData?.permissions.canTrackLocations && (
+            {(adminData?.permissions?.canTrackLocations || isSuperAdmin) && (
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isActive("/admin/konum-takibi")}>
                   <Link href="/admin/konum-takibi">
