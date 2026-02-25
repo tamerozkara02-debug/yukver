@@ -23,7 +23,7 @@ export default function AdminGirisPage() {
             <div className="flex justify-center mb-4">
                 <Link href="/" className="flex items-center gap-2">
                     <Truck className="h-8 w-8 text-primary" />
-                    <h1 className="text-2xl font-bold text-foreground font-headline">YÜKVER MERKEZİ</h1>
+                    <h1 className="text-2xl font-bold text-foreground font-headline uppercase">MAÇA MERKEZİ</h1>
                 </Link>
             </div>
         </CardHeader>

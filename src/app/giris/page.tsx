@@ -13,8 +13,8 @@ export default function GirisTabs() {
         <div className="flex justify-center mb-6">
           <Link href="/" className="flex items-center gap-2">
             <Truck className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground font-headline">
-              YÜKVER LOJİSTİK
+            <h1 className="text-2xl font-bold text-foreground font-headline uppercase">
+              MAÇA LOJİSTİK MERKEZİ
             </h1>
           </Link>
         </div>

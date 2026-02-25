@@ -1,13 +1,12 @@
-
 import type {Metadata} from 'next';
 import "leaflet/dist/leaflet.css";
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment trigger: 2025-02-19-v84 - Leaflet SSR Fix
+// Deployment trigger: 2025-02-19-v85 - Branding Update to MAÇA LOJİSTİK MERKEZİ
 export const metadata: Metadata = {
-  title: 'YÜKVER LOJİSTİK MERKEZİ',
+  title: 'MAÇA LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
 };
 
