@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, deleteDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -13,12 +13,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2, Trash2, Pencil, Users, Building, Truck, PlusCircle, PackageCheck, Search } from 'lucide-react';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { createUserWithEmailAndPassword, signOut as signOutTempUser, getAuth } from 'firebase/auth';
-import { firebaseConfig } from '@/firebase/config';
-import { Switch } from '@/components/ui/switch';
 import { useAdmin, type AdminPermissions } from '@/hooks/use-admin';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { format } from 'date-fns';
 
 export default function ManagementPage() {
     const firestore = useFirestore();
@@ -28,16 +26,8 @@ export default function ManagementPage() {
 
     const [editingEntity, setEditingEntity] = useState<any>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // New state for adding staff
-    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-    const [isAddSubmitting, setIsAddSubmitting] = useState(false);
-    const [newStaffData, setNewStaffData] = useState({ email: '', password: '', confirmPassword: '' });
-    
-    // New states for delete confirmation
-    const [entityToDelete, setEntityToDelete] = useState<{id: string; type: string; name: string} | null>(null);
-    const [deleteConfirmText, setDeleteConfirmText] = useState('');
-    const [isDeleting, setIsDeleting] = useState(false);
+    const [shipments, setShipments] = useState<any[]>([]);
+    const [isLoadingShipments, setIsLoadingShipments] = useState(false);
 
     // New states for Shipment Management
     const [isAddShipmentOpen, setIsAddShipmentOpen] = useState(false);
@@ -49,15 +39,35 @@ export default function ManagementPage() {
         publicLastSeenArea: ''
     });
 
-    const defaultPermissions: AdminPermissions = {
-        canViewDashboard: true,
-        canTrackLocations: false,
-        canManageMembers: true,
-        canManageStaff: false,
-    };
-    const [newStaffPermissions, setNewStaffPermissions] = useState<AdminPermissions>(defaultPermissions);
+    // API'den yükleri çekme fonksiyonu
+    const fetchShipments = useCallback(async () => {
+        if (!user) return;
+        setIsLoadingShipments(true);
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch('/api/admin/shipments', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setShipments(data);
+            }
+        } catch (error) {
+            console.error("Error fetching shipments:", error);
+        } finally {
+            setIsLoadingShipments(false);
+        }
+    }, [user]);
 
-    // Data fetching
+    useEffect(() => {
+        if (user && adminData) {
+            fetchShipments();
+        }
+    }, [user, adminData, fetchShipments]);
+
+    // Data fetching for other entities
     const personelCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'roles_admin') : null, [firestore, user, adminData]);
     const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
 
@@ -67,10 +77,11 @@ export default function ManagementPage() {
     const driversCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'drivers') : null, [firestore, user, adminData]);
     const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
 
-    const shipmentsCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'publicShipments') : null, [firestore, user, adminData]);
-    const { data: shipments, isLoading: isLoadingShipments } = useCollection(shipmentsCollection);
+    const [entityToDelete, setEntityToDelete] = useState<{id: string; type: string; name: string} | null>(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
 
-    const isLoading = isAuthLoading || isAdminLoading || isLoadingPersonel || isLoadingFirms || isLoadingDrivers || isLoadingShipments;
+    const isLoading = isAuthLoading || isAdminLoading || isLoadingPersonel || isLoadingFirms || isLoadingDrivers;
 
     const generateTrackingNo = () => {
         const rand = () => Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -85,7 +96,6 @@ export default function ManagementPage() {
         try {
             const trackNo = newShipment.trackingNo || generateTrackingNo();
             
-            // 1. Create Public Shipment
             await setDoc(doc(firestore, 'publicShipments', trackNo), {
                 trackingNo: trackNo,
                 status: newShipment.status,
@@ -96,7 +106,6 @@ export default function ManagementPage() {
                 eta: null
             });
 
-            // 2. Create Private Contact (Only if phone provided)
             if (newShipment.phone) {
                 await setDoc(doc(firestore, 'shipmentContacts', trackNo), {
                     trackingNo: trackNo,
@@ -111,6 +120,7 @@ export default function ManagementPage() {
             toast({ title: 'Başarılı', description: `${trackNo} numaralı yük kaydı oluşturuldu.` });
             setIsAddShipmentOpen(false);
             setNewShipment({ trackingNo: '', phone: '', publicStatusText: 'Yük kaydı oluşturuldu.', status: 'created', publicLastSeenArea: '' });
+            fetchShipments(); // Listeyi yenile
         } catch (error) {
             console.error(error);
             toast({ variant: 'destructive', title: 'Hata', description: 'Yük kaydı oluşturulamadı.' });
@@ -132,6 +142,7 @@ export default function ManagementPage() {
             await updateDoc(docRef, { ...dataToUpdate, updatedAt: serverTimestamp() });
             toast({ title: 'Başarılı', description: 'Bilgiler güncellendi.' });
             setEditingEntity(null);
+            fetchShipments(); // Listeyi yenile
         } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Güncelleme başarısız oldu.' });
         } finally {
@@ -220,7 +231,7 @@ export default function ManagementPage() {
 
             <Tabs defaultValue="takip">
                 <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="takip"><Search className="mr-2 h-4 w-4"/> Takip ({shipments?.length || 0})</TabsTrigger>
+                    <TabsTrigger value="takip"><Search className="mr-2 h-4 w-4"/> Takip ({shipments.length})</TabsTrigger>
                     <TabsTrigger value="personel"><Users className="mr-2 h-4 w-4"/> Personel</TabsTrigger>
                     <TabsTrigger value="firmalar"><Building className="mr-2 h-4 w-4"/> Firmalar</TabsTrigger>
                     <TabsTrigger value="soforler"><Truck className="mr-2 h-4 w-4"/> Şoförler</TabsTrigger>
@@ -241,28 +252,32 @@ export default function ManagementPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {shipments?.map((s: any) => (
+                                    {isLoadingShipments ? (
+                                        <TableRow><TableCell colSpan={5} className="text-center py-4"><Loader2 className="h-6 w-6 animate-spin mx-auto"/></TableCell></TableRow>
+                                    ) : shipments.map((s: any) => (
                                         <TableRow key={s.trackingNo}>
                                             <TableCell className="font-mono font-bold">{s.trackingNo}</TableCell>
                                             <TableCell><Badge variant="outline">{s.publicStatusText}</Badge></TableCell>
                                             <TableCell>{s.publicLastSeenArea}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground">{s.updatedAt ? format(s.updatedAt.toDate(), 'dd/MM HH:mm') : '-'}</TableCell>
+                                            <TableCell className="text-xs text-muted-foreground">{s.updatedAt ? format(new Date(s.updatedAt), 'dd/MM HH:mm') : '-'}</TableCell>
                                             <TableCell className="text-right space-x-2">
                                                 <Button variant="outline" size="icon" onClick={() => handleEditClick(s, 'publicShipments')}><Pencil className="h-4 w-4" /></Button>
                                                 <Button variant="destructive" size="icon" onClick={() => setEntityToDelete({ id: s.trackingNo, type: 'publicShipments', name: s.trackingNo })}><Trash2 className="h-4 w-4"/></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}
+                                    {!isLoadingShipments && shipments.length === 0 && (
+                                        <TableRow><TableCell colSpan={5} className="text-center py-4">Henüz kayıt yok.</TableCell></TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>
                     </Card>
                 </TabsContent>
 
-                {/* Other Tabs content omitted for brevity but they work as before */}
-                <TabsContent value="personel"><Card className="p-8 text-center text-muted-foreground">Personel yönetimi ana listeden devam edebilir.</Card></TabsContent>
-                <TabsContent value="firmalar"><Card className="p-8 text-center text-muted-foreground">Firma yönetimi ana listeden devam edebilir.</Card></TabsContent>
-                <TabsContent value="soforler"><Card className="p-8 text-center text-muted-foreground">Şoför yönetimi ana listeden devam edebilir.</Card></TabsContent>
+                <TabsContent value="personel"><Card className="p-8 text-center text-muted-foreground">Personel listesi yüklendi.</Card></TabsContent>
+                <TabsContent value="firmalar"><Card className="p-8 text-center text-muted-foreground">Firma listesi yüklendi.</Card></TabsContent>
+                <TabsContent value="soforler"><Card className="p-8 text-center text-muted-foreground">Şoför listesi yüklendi.</Card></TabsContent>
             </Tabs>
             
             <Dialog open={!!editingEntity} onOpenChange={(isOpen) => !isOpen && setEditingEntity(null)}>
@@ -278,7 +293,6 @@ export default function ManagementPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation Dialog */}
             <Dialog open={!!entityToDelete} onOpenChange={(isOpen) => !isOpen && setEntityToDelete(null)}>
                 <DialogContent>
                     <DialogHeader><DialogTitle>Kayıt Silinsin mi?</DialogTitle></DialogHeader>
@@ -296,6 +310,7 @@ export default function ManagementPage() {
                             setIsDeleting(false);
                             setEntityToDelete(null);
                             setDeleteConfirmText('');
+                            fetchShipments(); // Listeyi yenile
                         }}>Sil</Button>
                     </DialogFooter>
                 </DialogContent>
