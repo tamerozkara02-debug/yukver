@@ -4,7 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
 
-// Deployment trigger: 2025-02-19-v85 - Branding Update to MAÇA LOJİSTİK MERKEZİ
+// Deployment trigger: 2025-02-19-v86 - Full Brand Sync to MAÇA LOJİSTİK MERKEZİ
 export const metadata: Metadata = {
   title: 'MAÇA LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
