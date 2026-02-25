@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -11,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Loader2, Pencil, PackageCheck } from 'lucide-react';
 import { useAdmin } from '@/hooks/use-admin';
 import { Badge } from '@/components/ui/badge';
@@ -27,8 +27,6 @@ export default function ManagementPage() {
     // Server-side fetched data
     const [shipments, setShipments] = useState<any[]>([]);
     const [personnel, setPersonnel] = useState<any[]>([]);
-    const [firms, setFirms] = useState<any[]>([]);
-    const [drivers, setDrivers] = useState<any[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(false);
 
     const [isAddShipmentOpen, setIsAddShipmentOpen] = useState(false);
@@ -47,7 +45,6 @@ export default function ManagementPage() {
             const token = await user.getIdToken();
             const headers = { 'Authorization': `Bearer ${token}` };
             
-            // Note: We'll reuse existing endpoints and create a generic one for firms/drivers if needed
             const [shipRes, persRes] = await Promise.all([
                 fetch('/api/admin/shipments', { headers }),
                 fetch('/api/admin/personnel', { headers })
@@ -56,8 +53,6 @@ export default function ManagementPage() {
             if (shipRes.ok) setShipments(await shipRes.json());
             if (persRes.ok) setPersonnel(await persRes.json());
             
-            // For firms and drivers, we can fetch them via client-side if rules allow list, 
-            // but to be safe and avoid "Permission Denied" crashes, let's stick to fetch or ensure no subscription
         } catch (error) {
             console.error("Fetch error:", error);
         } finally {
@@ -110,7 +105,6 @@ export default function ManagementPage() {
             const targetId = id || editingEntity.trackingNo;
             const docRef = doc(firestore, type, targetId);
             
-            // Clean up data for Firestore
             const cleanData = { ...dataToUpdate };
             delete cleanData.updatedAt;
             delete cleanData.eta;
@@ -214,18 +208,32 @@ export default function ManagementPage() {
             <Dialog open={isAddShipmentOpen} onOpenChange={setIsAddShipmentOpen}>
                 <DialogContent>
                     <form onSubmit={handleAddShipment} className="space-y-4">
-                        <DialogHeader><DialogTitle>Yeni Takip Kaydı Oluştur</DialogTitle></DialogHeader>
+                        <DialogHeader>
+                            <DialogTitle>Yeni Takip Kaydı Oluştur</DialogTitle>
+                        </DialogHeader>
                         <div className="space-y-2">
                             <Label>Takip Numarası (Boş bırakılırsa otomatik üretilir)</Label>
-                            <Input placeholder="YUK-2026-..." value={newShipment.trackingNo} onChange={e => setNewShipment({...newShipment, trackingNo: e.target.value.toUpperCase()})} />
+                            <Input 
+                                placeholder="YUK-2026-..." 
+                                value={newShipment.trackingNo} 
+                                onChange={e => setNewShipment({...newShipment, trackingNo: e.target.value.toUpperCase()})} 
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>Güncel Durum Metni</Label>
-                            <Input placeholder="Yük yola çıktı" value={newShipment.publicStatusText} onChange={e => setNewShipment({...newShipment, publicStatusText: e.target.value})} />
+                            <Input 
+                                placeholder="Yük yola çıktı" 
+                                value={newShipment.publicStatusText} 
+                                onChange={e => setNewShipment({...newShipment, publicStatusText: e.target.value})} 
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label>Bulunduğu Bölge</Label>
-                            <Input placeholder="İstanbul / Tuzla" value={newShipment.publicLastSeenArea} onChange={e => setNewShipment({...newShipment, publicLastSeenArea: e.target.value})} />
+                            <Input 
+                                placeholder="İstanbul / Tuzla" 
+                                value={newShipment.publicLastSeenArea} 
+                                onChange={e => setNewShipment({...newShipment, publicLastSeenArea: e.target.value})} 
+                            />
                         </div>
                         <Button type="submit" className="w-full" disabled={isSubmitting}>
                             {isSubmitting ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <PackageCheck className="mr-2 h-4 w-4"/>}
@@ -237,7 +245,9 @@ export default function ManagementPage() {
 
             <Dialog open={!!editingEntity} onOpenChange={() => setEditingEntity(null)}>
                 <DialogContent>
-                    <DialogHeader><DialogTitle>Kaydı Düzenle</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                        <DialogTitle>Kaydı Düzenle</DialogTitle>
+                    </DialogHeader>
                     {editingEntity && (
                         <div className="space-y-4">
                             <div className="space-y-2">
