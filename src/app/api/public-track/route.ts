@@ -1,7 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { initializeFirebase } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 // IP bazlı basit rate limit
 const rateLimitMap = new Map<string, { count: number, timestamp: number }>();
@@ -33,17 +32,17 @@ export async function POST(request: Request) {
     }
 
     const normalizedNo = trackingNo.trim().toUpperCase();
-    const { firestore } = initializeFirebase();
-    const shipmentRef = doc(firestore, 'publicShipments', normalizedNo);
-    const shipmentSnap = await getDoc(shipmentRef);
+    
+    // Admin SDK kullanarak kural kısıtlamalarını baypas ediyoruz
+    const shipmentRef = adminDb.collection('publicShipments').doc(normalizedNo);
+    const shipmentSnap = await shipmentRef.get();
 
-    if (!shipmentSnap.exists()) {
+    if (!shipmentSnap.exists) {
       return NextResponse.json({ error: 'Yük bulunamadı. Lütfen numarayı kontrol edin.' }, { status: 404 });
     }
 
     const data = shipmentSnap.data();
-    // active=false ise "bulunamadı" mesajı dönmek daha güvenlidir
-    if (!data.active) {
+    if (!data || !data.active) {
       return NextResponse.json({ error: 'Bu yük numarası için takip şu an kapalı.' }, { status: 404 });
     }
 
@@ -52,8 +51,8 @@ export async function POST(request: Request) {
       status: data.status,
       publicStatusText: data.publicStatusText,
       publicLastSeenArea: data.publicLastSeenArea,
-      eta: data.eta,
-      updatedAt: data.updatedAt
+      eta: data.eta ? (data.eta.toDate ? data.eta.toDate().toISOString() : data.eta) : null,
+      updatedAt: data.updatedAt ? (data.updatedAt.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt) : new Date().toISOString()
     });
 
   } catch (error) {

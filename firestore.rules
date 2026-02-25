@@ -1,82 +1,93 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * PROTOTYPE MODE: YUKVER.NET TRACKING MODULE SECURITY RULES
-     * 
-     * CORE PHILOSOPHY: 
-     * This ruleset implements a "Strict Server-Side Mediation" model. To maximize security 
-     * for sensitive logistics data (like phone numbers and tracking movement), direct 
-     * client-side access to Firestore is disabled for all module collections. 
-     *
-     * DATA STRUCTURE:
-     * - /publicShipments/{trackingNo}: Publicly viewable tracking info (status, ETA).
-     * - /shipmentContacts/{trackingNo}: Private contact info (phone, preferences).
-     * - /smsLogs/{smsLogId}: Internal system logs for audit trails.
-     *
-     * KEY SECURITY DECISIONS:
-     * 1. API-ONLY ACCESS: As specified in the architectural reasoning, all tracking queries 
-     *    and shipment updates must be performed via server-side environments (Next.js API 
-     *    Routes or Cloud Functions) using the Firebase Admin SDK.
-     * 2. STRUCTURAL SEGREGATION: Sensitive data (contacts) is stored in a completely 
-     *    separate collection from public data to prevent accidental leakage through rules 
-     *    misconfiguration.
-     * 3. DENIAL BY DEFAULT: All client-side write and read operations are explicitly denied 
-     *    to ensure no data is exposed to unauthorized browsers or malicious scripts.
-     * 4. RELATIONAL INTEGRITY: Since all operations are server-side, relational validation 
-     *    (matching trackingNo across collections) is handled by the application logic 
-     *    rather than security rules.
-     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-    // The helper functions (isSignedIn, isOwner, isExistingOwner) were removed.
-    // They were identified as unused because all client-side operations are
-    // explicitly denied (`allow ...: if false;`) per the "API-ONLY ACCESS"
-    // and "DENIAL BY DEFAULT" security decisions. These helpers would only
-    // be relevant if client-side access was permitted under specific
-    // authentication or authorization conditions.
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function userIsAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    function getAdminPermissions() {
+      return get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.permissions;
+    }
 
     /**
-     * @description Public tracking information. Read access is denied here because 
-     *              retrieval is handled via a secure server-side API to control data exposure.
-     * @path /publicShipments/{trackingNo}
-     * @allow None (Access restricted to Admin SDK).
-     * @deny (get) Any direct client-side fetch attempt.
-     * @principle API Mediation: Forces all requests through a controlled backend layer.
+     * PUBLIC SHIPMENTS: Takip sistemi.
+     * Kullanıcıların direkt Firestore üzerinden okumasını kapatıyoruz.
+     * Sadece sunucu tarafındaki API (Admin SDK) erişebilecek.
      */
     match /publicShipments/{trackingNo} {
-      allow get, list: if false;
-      allow create, update, delete: if false;
+      allow read: if false;
+      allow write: if userIsAdmin();
     }
 
     /**
-     * @description Private contact details and SMS preferences. This collection 
-     *              contains PII (Phone numbers) and is strictly forbidden for client access.
-     * @path /shipmentContacts/{trackingNo}
-     * @allow None (Access restricted to Admin SDK/Cloud Functions).
-     * @deny (list) Unauthorized listing of recipient phone numbers.
-     * @principle PII Protection: Absolute isolation of sensitive contact data from the client.
+     * SHIPMENT CONTACTS: Hassas veriler.
+     * Tamamen kapalı.
      */
     match /shipmentContacts/{trackingNo} {
-      allow get, list: if false;
-      allow create, update, delete: if false;
+      allow read, write: if false;
     }
 
     /**
-     * @description Internal logs for SMS notification attempts. 
-     * @path /smsLogs/{smsLogId}
-     * @allow None (System-only logging).
-     * @deny (create) Client-side attempts to spoof or manipulate logs.
-     * @principle Audit Integrity: Prevents clients from viewing or modifying system audit trails.
+     * SMS LOGS: Tamamen kapalı.
      */
-    match /smsLogs/{smsLogId} {
-      allow get, list: if false;
-      allow create, update, delete: if false;
+    match /smsLogs/{logId} {
+      allow read, write: if false;
     }
 
-    // Default deny for any unspecified collections
-    match /{document=**} {
-      allow read, write: if false;
+    match /firms/{firmId} {
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(firmId);
+      allow update: if isOwner(firmId) || (userIsAdmin() && getAdminPermissions().canManageMembers == true);
+      allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
+      
+      match /loads/{loadId} {
+        allow read: if isSignedIn();
+        allow create: if isOwner(firmId);
+        allow update: if isOwner(firmId) || userIsAdmin();
+        allow delete: if isOwner(firmId) || (userIsAdmin() && getAdminPermissions().canManageMembers == true);
+      }
+    }
+    
+    match /drivers/{driverId} {
+      allow get, list: if isSignedIn();
+      allow create: if isOwner(driverId);
+      allow update: if isOwner(driverId);
+      allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
+    }
+    
+    match /{path=**}/loads/{loadId} {
+      allow read: if userIsAdmin();
+    }
+    
+    match /reviews/{reviewId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if userIsAdmin();
+    }
+
+    match /messages/{messageId} {
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid && request.auth.uid in request.resource.data.participantIds;
+      allow get: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+      allow list: if isSignedIn() && request.auth.uid == request.query.where[0][2];
+      allow update, delete: if false;
+    }
+
+    match /roles_admin/{userId} {
+        // Kullanıcının kendi rolünü okumasına izin ver (Önemli: isOwner kontrolü başa alındı)
+        allow get: if isOwner(userId) || userIsAdmin();
+        allow list: if userIsAdmin();
+        allow create: if (userIsAdmin() && getAdminPermissions().canManageStaff == true) || (request.auth.token.email == 'tamerozkara02@gmail.com' && isOwner(userId));
+        allow update: if isOwner(userId) || (userIsAdmin() && getAdminPermissions().canManageStaff == true);
+        allow delete: if userIsAdmin() && getAdminPermissions().canManageStaff == true;
     }
   }
 }

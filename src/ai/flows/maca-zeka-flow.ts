@@ -7,8 +7,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { initializeFirebase } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 const MacaZekaInputSchema = z.object({
   message: z.string().describe('The user message.'),
@@ -32,16 +31,17 @@ const getShipmentTool = ai.defineTool(
     outputSchema: z.any(),
   },
   async ({ trackingNo }) => {
-    const { firestore } = initializeFirebase();
     const normalized = trackingNo.trim().toUpperCase();
-    const snap = await getDoc(doc(firestore, 'publicShipments', normalized));
-    if (snap.exists() && snap.data().active) {
+    // Admin SDK kullanımı
+    const snap = await adminDb.collection('publicShipments').doc(normalized).get();
+    
+    if (snap.exists && snap.data()?.active) {
       const d = snap.data();
       return {
         found: true,
-        status: d.publicStatusText,
-        location: d.publicLastSeenArea,
-        eta: d.eta ? new Date(d.eta.seconds * 1000).toLocaleString('tr-TR') : 'Bilinmiyor'
+        status: d?.publicStatusText,
+        location: d?.publicLastSeenArea,
+        eta: d?.eta ? (d.eta.toDate ? d.eta.toDate().toLocaleString('tr-TR') : d.eta) : 'Bilinmiyor'
       };
     }
     return { found: false };
@@ -58,10 +58,10 @@ const prompt = ai.definePrompt({
 Kullanıcı mesajı: "{{{message}}}"
 
 GÖREVLERİN:
-1. Kullanıcı bir yük numarası (YUK-XXXX-YYYY formatında) verdiyse, MUTLAKA getShipmentData aracını kullan.
+1. Kullanıcı bir yük numarası (YUK-XXXX-YYYY formatında) verdiyse veya sorduysa, MUTLAKA getShipmentData aracını kullan.
 2. Eğer yük bulunursa, sadece araçtan gelen bilgileri (durum, konum, ETA) nazikçe Türkçe olarak metinleştir.
 3. KESİNLİKLE VERİ UYDURMA. Eğer araç "found: false" dönerse, yükün bulunamadığını ve numarayı kontrol etmesini söyle.
-4. Eğer kullanıcı yük numarası yazmadıysa, nazikçe yük takibi için numarasını (Örn: YUK-2026-ABCD-1234) yazmasını iste.
+4. Eğer kullanıcı yük numarası yazmadıysa veya birşeyler sorduysa, nazikçe yük takibi için numarasını (Örn: YUK-2026-ABCD-1234) yazmasını iste.
 5. Cevapların kısa, profesyonel ve sadece gerçek verilere dayalı olsun.
 
 ÇIKTI FORMATI: { "reply": "Cevabınız buraya", "detectedTrackingNo": "Tespit edilen numara" }`,
