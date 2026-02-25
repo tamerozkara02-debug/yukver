@@ -19,31 +19,23 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.permissions;
     }
 
-    /**
-     * PUBLIC SHIPMENTS: Takip sistemi.
-     * Kullanıcıların direkt Firestore üzerinden okumasını kapatıyoruz.
-     * Sadece sunucu tarafındaki API (Admin SDK) erişebilecek.
-     */
+    // --- Public Shipments ---
+    // Allow 'get' only if they have the specific ID. Deny 'list'.
     match /publicShipments/{trackingNo} {
-      allow read: if false;
+      allow get: if true;
+      allow list: if false; 
       allow write: if userIsAdmin();
     }
 
-    /**
-     * SHIPMENT CONTACTS: Hassas veriler.
-     * Tamamen kapalı.
-     */
+    // --- Sensitive Collections ---
     match /shipmentContacts/{trackingNo} {
       allow read, write: if false;
     }
-
-    /**
-     * SMS LOGS: Tamamen kapalı.
-     */
     match /smsLogs/{logId} {
       allow read, write: if false;
     }
 
+    // --- Standard Collections ---
     match /firms/{firmId} {
       allow get, list: if isSignedIn();
       allow create: if isOwner(firmId);
@@ -82,7 +74,7 @@ service cloud.firestore {
     }
 
     match /roles_admin/{userId} {
-        // Kullanıcının kendi rolünü okumasına izin ver (Önemli: isOwner kontrolü başa alındı)
+        // Prioritize isOwner to allow users to read their own role metadata
         allow get: if isOwner(userId) || userIsAdmin();
         allow list: if userIsAdmin();
         allow create: if (userIsAdmin() && getAdminPermissions().canManageStaff == true) || (request.auth.token.email == 'tamerozkara02@gmail.com' && isOwner(userId));
