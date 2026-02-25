@@ -1,145 +1,209 @@
-
 {
   "entities": {
-    "Admin": {
-      "title": "Admin User",
-      "description": "Represents a user with administrative privileges.",
+    "PublicShipment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PublicShipment",
       "type": "object",
+      "description": "Represents the publicly visible tracking information for a logistics shipment within the Yukver.net tracking module.",
       "properties": {
-        "id": { "type": "string" },
-        "username": { "type": "string" },
-        "firstName": { "type": "string" },
-        "lastName": { "type": "string" },
-        "phoneNumber": { "type": "string" },
-        "profilePicture": { "type": "string", "format": "uri" },
-        "permissions": {
-            "type": "object",
-            "properties": {
-                "canViewDashboard": { "type": "boolean" },
-                "canTrackLocations": { "type": "boolean" },
-                "canManageMembers": { "type": "boolean" },
-                "canManageStaff": { "type": "boolean" }
-            }
+        "trackingNo": {
+          "type": "string",
+          "description": "Unique identifier for the PublicShipment entity, serving as the tracking number."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the shipment.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "publicStatusText": {
+          "type": "string",
+          "description": "A human-readable text description of the current shipment status."
+        },
+        "publicLastSeenArea": {
+          "type": "string",
+          "description": "The last known city/district area where the shipment was scanned."
+        },
+        "eta": {
+          "type": "string",
+          "description": "Estimated time of arrival for the shipment.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the shipment's public information was last updated.",
+          "format": "date-time"
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Indicates if the shipment is currently active for tracking."
         }
       },
-      "required": ["id", "username", "permissions"]
+      "required": [
+        "trackingNo",
+        "status",
+        "publicStatusText",
+        "publicLastSeenArea",
+        "updatedAt",
+        "active"
+      ]
     },
-    "Firm": {
-        "title": "Firm",
-        "description": "Represents a company that provides loads.",
-        "type": "object",
-        "properties": {
-            "id": { "type": "string" },
-            "firstName": { "type": "string" },
-            "lastName": { "type": "string" },
-            "phoneNumber": { "type": "string" },
-            "city": { "type": "string" },
-            "district": { "type": "string" },
-            "profilePicture": { "type": "string", "format": "uri" },
-            "taxOffice": { "type": "string" },
-            "taxNumber": { "type": "string" },
-            "claimedByStaffId": { "type": "string" },
-            "claimedAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["id", "firstName", "lastName", "phoneNumber", "city", "district"]
-    },
-    "Driver": {
-        "title": "Driver",
-        "description": "Represents a driver who can take loads.",
-        "type": "object",
-        "properties": {
-            "id": { "type": "string" },
-            "firstName": { "type": "string" },
-            "lastName": { "type": "string" },
-            "phoneNumber": { "type": "string" },
-            "vehicleType": { "type": "string" },
-            "vehiclePlate": { "type": "string" },
-            "profilePicture": { "type": "string", "format": "uri" },
-            "vehiclePicture": { "type": "string", "format": "uri" },
-            "currentCity": { "type": "string" },
-            "isAvailable": { "type": "boolean" },
-            "latitude": { "type": "number" },
-            "longitude": { "type": "number" },
-            "lastLocationUpdate": { "type": "string", "format": "date-time" }
-        },
-        "required": ["id", "firstName", "lastName", "phoneNumber", "vehicleType", "vehiclePlate"]
-    },
-    "Load": {
-        "title": "Load",
-        "description": "Represents a load to be transported.",
-        "type": "object",
-        "properties": {
-            "firmId": { "type": "string" },
-            "loadType": { "type": "string" },
-            "tonnage": { "type": "number" },
-            "originCity": { "type": "string" },
-            "originDistrict": { "type": "string" },
-            "destinationCity": { "type": "string" },
-            "destinationDistrict": { "type": "string" },
-            "requiredVehicleType": { "type": "string" },
-            "notes": { "type": "string" },
-            "createdAt": { "type": "string", "format": "date-time" },
-            "claimedByStaffId": { "type": "string" },
-            "claimedAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["firmId", "loadType", "tonnage", "originCity", "originDistrict", "destinationCity", "destinationDistrict", "requiredVehicleType"]
-    },
-    "PublicShipment": {
-      "title": "Public Shipment Tracking",
-      "description": "Non-sensitive tracking information accessible via tracking number.",
+    "ShipmentContact": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ShipmentContact",
       "type": "object",
+      "description": "Stores private contact information and notification preferences for a specific shipment in the Yukver.net tracking module.",
       "properties": {
-        "trackingNo": { "type": "string" },
-        "status": { "type": "string", "enum": ["created", "picked_up", "in_transit", "out_for_delivery", "delivered", "canceled"] },
-        "publicStatusText": { "type": "string" },
-        "publicLastSeenArea": { "type": "string" },
-        "eta": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "active": { "type": "boolean" }
+        "trackingNo": {
+          "type": "string",
+          "description": "Unique identifier for the ShipmentContact entity, which is also the tracking number, linking it to a PublicShipment. (Relationship: PublicShipment 1:1 ShipmentContact)"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The recipient's phone number for SMS notifications, including country code (e.g., +90...)."
+        },
+        "notifyOn": {
+          "type": "array",
+          "description": "An array of shipment statuses for which the recipient should receive SMS notifications.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "lastNotifiedStatus": {
+          "type": "string",
+          "description": "The last shipment status for which an SMS notification was successfully sent to prevent duplicate messages."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the shipment contact information was first created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the shipment contact information was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["trackingNo", "status", "publicStatusText", "updatedAt", "active"]
+      "required": [
+        "trackingNo",
+        "phone",
+        "notifyOn",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "Review": {
-      "title": "Review",
-      "description": "Represents a review from one user to another.",
+    "SmsLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SmsLog",
       "type": "object",
+      "description": "Records details of every SMS notification attempt sent for shipment status changes within the Yukver.net tracking module.",
       "properties": {
-        "reviewerId": { "type": "string" },
-        "reviewerRole": { "type": "string", "enum": ["firma", "sofor", "admin"] },
-        "revieweeId": { "type": "string" },
-        "revieweeRole": { "type": "string", "enum": ["firma", "sofor"] },
-        "rating": { "type": "number" },
-        "comment": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the SmsLog entry."
+        },
+        "trackingNo": {
+          "type": "string",
+          "description": "Reference to the PublicShipment entity this SMS notification is related to. (Relationship: PublicShipment 1:N SmsLog)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The shipment status that triggered this SMS notification."
+        },
+        "phoneMasked": {
+          "type": "string",
+          "description": "Masked recipient phone number for privacy (e.g., +90******12)."
+        },
+        "provider": {
+          "type": "string",
+          "description": "The SMS service provider used to send the message.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Indicates whether the SMS was sent successfully."
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if the SMS sending failed."
+        },
+        "sentAt": {
+          "type": "string",
+          "description": "Timestamp when the SMS was attempted to be sent.",
+          "format": "date-time"
+        }
       },
-      "required": ["reviewerId", "reviewerRole", "revieweeId", "revieweeRole", "rating", "comment", "createdAt"]
-    },
-    "Message": {
-      "title": "Message",
-      "description": "Represents a direct message between two users.",
-      "type": "object",
-      "properties": {
-        "senderId": { "type": "string" },
-        "receiverId": { "type": "string" },
-        "content": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "participantIds": { "type": "array", "items": { "type": "string" } }
-      },
-      "required": ["senderId", "receiverId", "content", "createdAt", "participantIds"]
+      "required": [
+        "id",
+        "trackingNo",
+        "status",
+        "phoneMasked",
+        "provider",
+        "success",
+        "sentAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "anonymous", "google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
     "structure": [
-        { "path": "/firms/{firmId}", "schema": { "$ref": "#/entities/Firm" }, "description": "Stores company profiles." },
-        { "path": "/firms/{firmId}/loads/{loadId}", "schema": { "$ref": "#/entities/Load" }, "description": "Stores loads for each company." },
-        { "path": "/drivers/{driverId}", "schema": { "$ref": "#/entities/Driver" }, "description": "Stores driver profiles." },
-        { "path": "/roles_admin/{userId}", "schema": { "$ref": "#/entities/Admin" }, "description": "Stores documents for users with admin roles." },
-        { "path": "/publicShipments/{trackingNo}", "schema": { "$ref": "#/entities/PublicShipment" }, "description": "Public tracking records." },
-        { "path": "/reviews/{reviewId}", "schema": { "$ref": "#/entities/Review" }, "description": "Stores all reviews between users." },
-        { "path": "/messages/{messageId}", "schema": { "$ref": "#/entities/Message" }, "description": "Stores all direct messages between users." }
-    ]
+      {
+        "path": "/publicShipments/{trackingNo}",
+        "definition": {
+          "entityName": "PublicShipment",
+          "schema": {
+            "$ref": "#/backend/entities/PublicShipment"
+          },
+          "description": "Stores publicly visible, non-sensitive tracking information for a shipment. Direct client reads from Firestore are explicitly denied; access for public tracking is facilitated only via a server-side API endpoint. Includes 'trackingNo' as the document ID for direct lookup. Managed by internal system operations or authorized personnel.",
+          "params": [
+            {
+              "name": "trackingNo",
+              "description": "The unique tracking number identifying a shipment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/shipmentContacts/{trackingNo}",
+        "definition": {
+          "entityName": "ShipmentContact",
+          "schema": {
+            "$ref": "#/backend/entities/ShipmentContact"
+          },
+          "description": "Contains private contact details (e.g., phone number) and notification preferences for a shipment. This collection is completely inaccessible to clients. It is read and written exclusively by server-side logic, such as Cloud Functions or administrative tools, linked by 'trackingNo'.",
+          "params": [
+            {
+              "name": "trackingNo",
+              "description": "The unique tracking number identifying a shipment, linking to its public counterpart."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/smsLogs/{smsLogId}",
+        "definition": {
+          "entityName": "SmsLog",
+          "schema": {
+            "$ref": "#/backend/entities/SmsLog"
+          },
+          "description": "Records all attempts to send SMS notifications, including status, provider, and success/failure. This collection is for internal logging purposes only and is completely inaccessible to clients. Documents are created with an auto-generated ID.",
+          "params": [
+            {
+              "name": "smsLogId",
+              "description": "A unique, auto-generated identifier for each SMS log entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed to strictly adhere to the core design principles, particularly Authorization Independence and Structural Segregation, to ensure a secure, scalable, and easily debuggable system for the 'Yük Takip + Otomatik SMS Bildirim' module. The primary strategy employed is **Structural Segregation** to separate public, non-sensitive data from private, sensitive data, leading to a clear and homogeneous security posture for each collection.\n\n1.  **Authorization Independence (CRITICAL):** Authorization independence is inherently achieved for client access by the radical decision to block all direct client reads to the `publicShipments` and `shipmentContacts` collections. For server-side operations (Cloud Functions), the `trackingNo` acts as the direct link between `publicShipments` and `shipmentContacts`. When a `publicShipment` document is updated, the `trackingNo` from its ID is used to directly retrieve the corresponding `shipmentContact` document. This eliminates any need for `get()` calls within Firestore Security Rules for authorization purposes related to these collections, as client access is denied, and server-side logic handles the data fetching directly via Admin SDK.\n\n2.  **QAPs (Rules are not Filters):** This is robustly addressed by preventing direct client access to Firestore for these collections, thereby making client-side `list` operations impossible. \n    *   For `/publicShipments/{trackingNo}`, the security rules will explicitly deny all client `read` access (`allow read: if false;`). Public tracking queries will be routed through a server-side API endpoint (e.g., a Next.js API route) that uses the Firebase Admin SDK to fetch specific documents or perform controlled queries. This ensures that clients cannot arbitrarily `list` or filter `publicShipments` directly from Firestore, preventing data leakage and maintaining server-controlled access to public information. \n    *   For `/shipmentContacts/{trackingNo}` and `/smsLogs/{smsLogId}`, all client access (read and write) will be completely denied (`allow read, write: if false;`). This guarantees that sensitive phone numbers and internal logs are never directly exposed to any client, preventing unauthorized `list` or `get` operations on these highly private collections.\n\nThis segregation and strict rule enforcement make the security model extremely simple, explicit, and debuggable, as access is either entirely denied or handled exclusively by trusted server-side processes with administrative privileges."
   }
 }
