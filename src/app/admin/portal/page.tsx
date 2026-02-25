@@ -4,7 +4,7 @@
 import { Suspense, useMemo, useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
-import { collection, collectionGroup, query, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, collectionGroup, doc, updateDoc } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import {
   Table,
@@ -55,8 +55,8 @@ function PortalPageContents() {
     const [selectedCity, setSelectedCity] = useState<string>('all');
     const [appliedCity, setAppliedCity] = useState<string>('all');
     
-    // State for timer
-    const [_, setNow] = useState(new Date());
+    // Hydration-safe timer
+    const [now, setNow] = useState<Date | null>(null);
 
     // --- DATA FETCHING ---
     const adminDocRef = useMemoFirebase(() => (firestore && user) ? doc(firestore, 'roles_admin', user.uid) : null, [firestore, user]);
@@ -124,9 +124,10 @@ function PortalPageContents() {
     }, [currentAdminData]);
 
     useEffect(() => {
+        setNow(new Date());
         const timer = setInterval(() => {
             setNow(new Date());
-        }, 60000); // Re-render every minute to update claim status
+        }, 60000); 
         return () => clearInterval(timer);
     }, []);
 
@@ -159,8 +160,7 @@ function PortalPageContents() {
             toast({ title: 'Başarılı', description: 'Profil resmi güncellendi.' });
           } catch (error) {
             toast({ variant: 'destructive', title: 'Hata', description: 'Profil resmi güncellenemedi.' });
-            console.error("Avatar update error:", error);
-            setAvatarPreview(currentAdminData?.profilePicture || null); // Revert on error
+            setAvatarPreview(currentAdminData?.profilePicture || null); 
           }
         }
     };
@@ -172,7 +172,6 @@ function PortalPageContents() {
           toast({ title: 'Başarılı', description: 'Profil bilgileriniz güncellendi.' });
           setIsEditDialogOpen(false);
         } catch (error) {
-          console.error('Profile update error:', error);
           toast({ variant: 'destructive', title: 'Hata', description: 'Profil güncellenemedi.' });
         }
     };
@@ -316,12 +315,12 @@ function PortalPageContents() {
                             {isLoading && <TableRow><TableCell colSpan={5} className="h-24 text-center">Yükleniyor...</TableCell></TableRow>}
                             {!isLoading && filteredLoads?.map((load: any) => {
                                 const claimTime = load.claimedAt?.toDate();
-                                const isClaimed = claimTime && (new Date().getTime() - claimTime.getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
+                                const isClaimed = claimTime && now && (now.getTime() - claimTime.getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
                                 
                                 let remainingTime = null;
-                                if (isClaimed && claimTime) {
+                                if (isClaimed && claimTime && now) {
                                     const expiryTime = claimTime.getTime() + CLAIM_DURATION_MINUTES * 60 * 1000;
-                                    const remainingMillis = expiryTime - new Date().getTime();
+                                    const remainingMillis = expiryTime - now.getTime();
                                     remainingTime = Math.max(0, Math.round(remainingMillis / (60 * 1000)));
                                 }
 

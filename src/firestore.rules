@@ -15,13 +15,33 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.permissions;
     }
 
+    /**
+     * PUBLIC SHIPMENTS: Takip sistemi.
+     * Sadece Takip No bilen tekil okuma yapabilir (get).
+     * Toplu listeleme (list) yasaktır.
+     * Sadece admin yazabilir.
+     */
     match /publicShipments/{trackingNo} {
-      // GÜVENLİK: Sadece Takip No'yu (Doküman ID) bilen tekil okuma yapabilir.
-      // Toplu listeleme (list) kesinlikle kapalıdır.
       allow get: if true;
       allow list: if false;
-      // Sadece yetkili personel yazabilir/güncelleyebilir
       allow write: if userIsAdmin();
+    }
+
+    /**
+     * SHIPMENT CONTACTS: Hassas veriler (Telefon vb).
+     * İstemci (Client) erişimi tamamen kapalıdır.
+     * Sadece sistem (Admin SDK/Functions) erişebilir.
+     */
+    match /shipmentContacts/{trackingNo} {
+      allow read, write: if false;
+    }
+
+    /**
+     * SMS LOGS: Gönderim kayıtları.
+     * İstemci erişimi tamamen kapalıdır.
+     */
+    match /smsLogs/{logId} {
+      allow read, write: if false;
     }
 
     match /firms/{firmId} {
