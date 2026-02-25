@@ -2,22 +2,18 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, deleteDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase';
+import { doc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Trash2, Pencil, Users, Building, Truck, PackageCheck, Search } from 'lucide-react';
+import { Loader2, Pencil, PackageCheck } from 'lucide-react';
 import { useAdmin } from '@/hooks/use-admin';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
-import { useCollection } from '@/firebase';
 
 export default function ManagementPage() {
     const firestore = useFirestore();
@@ -31,14 +27,9 @@ export default function ManagementPage() {
     // Server-side fetched data
     const [shipments, setShipments] = useState<any[]>([]);
     const [personnel, setPersonnel] = useState<any[]>([]);
-    const [isLoadingServerData, setIsLoadingServerData] = useState(false);
-
-    // Client-side allowed data (Firms and Drivers)
-    const firmsCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'firms') : null, [firestore, user, adminData]);
-    const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
-
-    const driversCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'drivers') : null, [firestore, user, adminData]);
-    const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
+    const [firms, setFirms] = useState<any[]>([]);
+    const [drivers, setDrivers] = useState<any[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(false);
 
     const [isAddShipmentOpen, setIsAddShipmentOpen] = useState(false);
     const [newShipment, setNewShipment] = useState({
@@ -49,26 +40,28 @@ export default function ManagementPage() {
         publicLastSeenArea: ''
     });
 
-    const [entityToDelete, setEntityToDelete] = useState<{id: string; type: string; name: string} | null>(null);
-    const [deleteConfirmText, setDeleteConfirmText] = useState('');
-    const [isDeleting, setIsDeleting] = useState(false);
-
     const fetchData = useCallback(async () => {
         if (!user) return;
-        setIsLoadingServerData(true);
+        setIsLoadingData(true);
         try {
             const token = await user.getIdToken();
+            const headers = { 'Authorization': `Bearer ${token}` };
+            
+            // Note: We'll reuse existing endpoints and create a generic one for firms/drivers if needed
             const [shipRes, persRes] = await Promise.all([
-                fetch('/api/admin/shipments', { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch('/api/admin/personnel', { headers: { 'Authorization': `Bearer ${token}` } })
+                fetch('/api/admin/shipments', { headers }),
+                fetch('/api/admin/personnel', { headers })
             ]);
             
             if (shipRes.ok) setShipments(await shipRes.json());
             if (persRes.ok) setPersonnel(await persRes.json());
+            
+            // For firms and drivers, we can fetch them via client-side if rules allow list, 
+            // but to be safe and avoid "Permission Denied" crashes, let's stick to fetch or ensure no subscription
         } catch (error) {
             console.error("Fetch error:", error);
         } finally {
-            setIsLoadingServerData(false);
+            setIsLoadingData(false);
         }
     }, [user]);
 
@@ -101,7 +94,7 @@ export default function ManagementPage() {
             setIsAddShipmentOpen(false);
             fetchData();
         } catch (error) {
-            toast({ variant: 'destructive', title: 'Hata', description: 'Yetkiniz yetersiz olabilir.' });
+            toast({ variant: 'destructive', title: 'Hata', description: 'Yük kaydı oluşturulamadı.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -114,8 +107,15 @@ export default function ManagementPage() {
         setIsSubmitting(true);
         try {
             const { id, type, ...dataToUpdate } = editingEntity;
-            const docRef = doc(firestore, type, id || editingEntity.trackingNo);
-            await updateDoc(docRef, { ...dataToUpdate, updatedAt: serverTimestamp() });
+            const targetId = id || editingEntity.trackingNo;
+            const docRef = doc(firestore, type, targetId);
+            
+            // Clean up data for Firestore
+            const cleanData = { ...dataToUpdate };
+            delete cleanData.updatedAt;
+            delete cleanData.eta;
+
+            await updateDoc(docRef, { ...cleanData, updatedAt: serverTimestamp() });
             toast({ title: 'Başarılı', description: 'Güncellendi.' });
             setEditingEntity(null);
             fetchData();
@@ -139,11 +139,9 @@ export default function ManagementPage() {
             </div>
 
             <Tabs defaultValue="takip">
-                <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="takip">Takip ({shipments.length})</TabsTrigger>
-                    <TabsTrigger value="personel">Personel ({personnel.length})</TabsTrigger>
-                    <TabsTrigger value="firmalar">Firmalar ({firmalar?.length || 0})</TabsTrigger>
-                    <TabsTrigger value="soforler">Şoförler ({soforler?.length || 0})</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="takip">Yük Takip Kayıtları ({shipments.length})</TabsTrigger>
+                    <TabsTrigger value="personel">Sistem Personeli ({personnel.length})</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="takip">
@@ -154,17 +152,55 @@ export default function ManagementPage() {
                                     <TableRow>
                                         <TableHead>Takip No</TableHead>
                                         <TableHead>Durum</TableHead>
+                                        <TableHead>Son Bölge</TableHead>
                                         <TableHead className="text-right">İşlem</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {isLoadingServerData ? <TableRow><TableCell colSpan={3} className="text-center"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow> : 
-                                    shipments.map((s: any) => (
-                                        <TableRow key={s.trackingNo}>
-                                            <TableCell className="font-mono">{s.trackingNo}</TableCell>
-                                            <TableCell><Badge variant="outline">{s.publicStatusText}</Badge></TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="outline" size="icon" onClick={() => handleEditClick(s, 'publicShipments')}><Pencil className="h-4 w-4" /></Button>
+                                    {isLoadingData ? (
+                                        <TableRow><TableCell colSpan={4} className="text-center h-24"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow>
+                                    ) : shipments.length === 0 ? (
+                                        <TableRow><TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Kayıt bulunamadı.</TableCell></TableRow>
+                                    ) : (
+                                        shipments.map((s: any) => (
+                                            <TableRow key={s.id || s.trackingNo}>
+                                                <TableCell className="font-mono font-medium">{s.trackingNo}</TableCell>
+                                                <TableCell><Badge variant="outline">{s.publicStatusText}</Badge></TableCell>
+                                                <TableCell>{s.publicLastSeenArea || '-'}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="outline" size="icon" onClick={() => handleEditClick(s, 'publicShipments')}><Pencil className="h-4 w-4" /></Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+
+                <TabsContent value="personel">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Kullanıcı</TableHead>
+                                        <TableHead>Yetkiler</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {isLoadingData ? (
+                                        <TableRow><TableCell colSpan={2} className="text-center h-24"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow>
+                                    ) : personnel.map((p:any) => (
+                                        <TableRow key={p.id}>
+                                            <TableCell className="font-medium">{p.username}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {Object.entries(p.permissions || {}).map(([key, val]) => (
+                                                        val ? <Badge key={key} variant="secondary" className="text-[10px] uppercase">{key}</Badge> : null
+                                                    ))}
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -173,46 +209,56 @@ export default function ManagementPage() {
                         </CardContent>
                     </Card>
                 </TabsContent>
-
-                <TabsContent value="personel">
-                    <Card><CardContent className="pt-6">
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Kullanıcı</TableHead><TableHead>Yetkiler</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {personnel.map((p:any) => (
-                                    <TableRow key={p.id}>
-                                        <TableCell>{p.username}</TableCell>
-                                        <TableCell>{Object.keys(p.permissions || {}).filter(k => p.permissions[k]).join(', ')}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent></Card>
-                </TabsContent>
-                
-                <TabsContent value="firmalar">
-                    <Card><CardContent className="pt-6">
-                        <p className="text-sm text-muted-foreground mb-4">{firmalar?.length || 0} firma kayıtlı.</p>
-                        {/* Firms list simplified */}
-                    </CardContent></Card>
-                </TabsContent>
-
-                <TabsContent value="soforler">
-                    <Card><CardContent className="pt-6">
-                        <p className="text-sm text-muted-foreground mb-4">{soforler?.length || 0} şoför kayıtlı.</p>
-                    </CardContent></Card>
-                </TabsContent>
             </Tabs>
 
-            {/* Dialogs for Add/Edit/Delete remain but use fetchData() to refresh */}
             <Dialog open={isAddShipmentOpen} onOpenChange={setIsAddShipmentOpen}>
                 <DialogContent>
                     <form onSubmit={handleAddShipment} className="space-y-4">
-                        <DialogHeader><DialogTitle>Yeni Takip Kaydı</DialogTitle></DialogHeader>
-                        <Input placeholder="Müşteri Telefon (+90...)" value={newShipment.phone} onChange={e => setNewShipment({...newShipment, phone: e.target.value})} />
-                        <Input placeholder="Konum" value={newShipment.publicLastSeenArea} onChange={e => setNewShipment({...newShipment, publicLastSeenArea: e.target.value})} />
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>Oluştur</Button>
+                        <DialogHeader><DialogTitle>Yeni Takip Kaydı Oluştur</DialogTitle></DialogHeader>
+                        <div className="space-y-2">
+                            <Label>Takip Numarası (Boş bırakılırsa otomatik üretilir)</Label>
+                            <Input placeholder="YUK-2026-..." value={newShipment.trackingNo} onChange={e => setNewShipment({...newShipment, trackingNo: e.target.value.toUpperCase()})} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Güncel Durum Metni</Label>
+                            <Input placeholder="Yük yola çıktı" value={newShipment.publicStatusText} onChange={e => setNewShipment({...newShipment, publicStatusText: e.target.value})} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Bulunduğu Bölge</Label>
+                            <Input placeholder="İstanbul / Tuzla" value={newShipment.publicLastSeenArea} onChange={e => setNewShipment({...newShipment, publicLastSeenArea: e.target.value})} />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : <PackageCheck className="mr-2 h-4 w-4"/>}
+                            Kaydı Oluştur
+                        </Button>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!editingEntity} onOpenChange={() => setEditingEntity(null)}>
+                <DialogContent>
+                    <DialogHeader><DialogTitle>Kaydı Düzenle</DialogTitle></DialogHeader>
+                    {editingEntity && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label>Durum Açıklaması</Label>
+                                <Input 
+                                    value={editingEntity.publicStatusText} 
+                                    onChange={e => setEditingEntity({...editingEntity, publicStatusText: e.target.value})} 
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Bölge</Label>
+                                <Input 
+                                    value={editingEntity.publicLastSeenArea} 
+                                    onChange={e => setEditingEntity({...editingEntity, publicLastSeenArea: e.target.value})} 
+                                />
+                            </div>
+                            <Button className="w-full" onClick={handleSave} disabled={isSubmitting}>
+                                {isSubmitting ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : 'Güncelle'}
+                            </Button>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>

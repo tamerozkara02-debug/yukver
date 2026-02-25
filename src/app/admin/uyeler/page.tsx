@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -18,11 +19,11 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Phone, MessageCircle, Truck, Building, Loader2, Trash2, ClipboardCheck } from "lucide-react"
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase"
-import { collection, doc, deleteDoc, updateDoc, serverTimestamp, deleteField } from "firebase/firestore"
+import { Phone, MessageCircle, Truck, Building, Loader2, Trash2, ClipboardCheck, Search } from "lucide-react"
+import { useFirestore, useUser } from "@/firebase"
+import { doc, deleteDoc, updateDoc, serverTimestamp, deleteField, collection, getDocs } from "firebase/firestore"
 import { useAdmin } from "@/hooks/use-admin"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -34,68 +35,85 @@ const CLAIM_DURATION_MINUTES = 30;
 
 export default function AdminUyelerPage() {
   const firestore = useFirestore();
-  const { user, isUserLoading: isAuthLoading } = useUser();
-  const { adminData, isLoading: isAdminLoading } = useAdmin();
+  const { user } = useUser();
+  const { adminData } = useAdmin();
   const { toast } = useToast();
 
-  const [_, setNow] = useState(new Date());
+  const [isLoading, setIsLoading] = useState(true);
+  const [firmalar, setFirmalar] = useState<any[]>([]);
+  const [soforler, setSoforler] = useState<any[]>([]);
+  const [personel, setPersonel] = useState<any[]>([]);
 
   // State for filters
   const [selectedFirmCity, setSelectedFirmCity] = useState<string>('all');
   const [selectedDriverCity, setSelectedDriverCity] = useState<string>('all');
+  const [searchTerm, setSearchName] = useState('');
   
   // State for delete confirmation
   const [entityToDelete, setEntityToDelete] = useState<{id: string; type: 'firma' | 'sofor'; name: string} | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const firmsCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'firms') : null, [firestore, user, adminData]);
-  const driversCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'drivers') : null, [firestore, user, adminData]);
-  const personelCollection = useMemoFirebase(() => (firestore && user && adminData) ? collection(firestore, 'roles_admin') : null, [firestore, user, adminData]);
+  const fetchMembers = useCallback(async () => {
+    if (!firestore || !user) return;
+    setIsLoading(true);
+    try {
+        const [firmsSnap, driversSnap, staffSnap] = await Promise.all([
+            getDocs(collection(firestore, 'firms')),
+            getDocs(collection(firestore, 'drivers')),
+            getDocs(collection(firestore, 'roles_admin'))
+        ]);
 
-  const { data: firmalar, isLoading: isLoadingFirms } = useCollection(firmsCollection);
-  const { data: soforler, isLoading: isLoadingDrivers } = useCollection(driversCollection);
-  const { data: personel, isLoading: isLoadingPersonel } = useCollection(personelCollection);
-  
+        setFirmalar(firmsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setSoforler(driversSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setPersonel(staffSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error) {
+        console.error("Fetch members error:", error);
+        toast({ variant: "destructive", title: "Hata", description: "Üye listesi yüklenemedi." });
+    } finally {
+        setIsLoading(false);
+    }
+  }, [firestore, user, toast]);
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date());
-    }, 60000); // Re-render every minute to update claim status
-    return () => clearInterval(timer);
-  }, []);
+    if (user && adminData) fetchMembers();
+  }, [user, adminData, fetchMembers]);
 
   const getStaffName = (staffId: string) => {
-    if (!personel) return 'Bilinmeyen Personel';
     const staffMember = personel.find(p => p.id === staffId);
-    return staffMember ? `${staffMember.firstName} ${staffMember.lastName?.[0] || ''}.` : 'Bilinmeyen';
+    return staffMember ? `${staffMember.firstName || 'Personel'} ${staffMember.lastName?.[0] || ''}.` : 'Bilinmeyen';
   }
 
   const firmCities = useMemo(() => {
-    if (!firmalar) return [];
     const cities = new Set(firmalar.map(f => f.city).filter(Boolean));
     return ['all', ...Array.from(cities).sort()];
   }, [firmalar]);
 
   const driverCities = useMemo(() => {
-    if (!soforler) return [];
     const cities = new Set(soforler.map(s => s.currentCity).filter(Boolean));
     return ['all', ...Array.from(cities).sort()];
   }, [soforler]);
 
   const filteredFirmalar = useMemo(() => {
-    if (!firmalar) return [];
-    if (selectedFirmCity === 'all') return firmalar;
-    return firmalar.filter(f => f.city === selectedFirmCity);
-  }, [firmalar, selectedFirmCity]);
+    let filtered = firmalar;
+    if (selectedFirmCity !== 'all') filtered = filtered.filter(f => f.city === selectedFirmCity);
+    if (searchTerm) {
+        const lower = searchTerm.toLowerCase();
+        filtered = filtered.filter(f => `${f.firstName} ${f.lastName}`.toLowerCase().includes(lower));
+    }
+    return filtered;
+  }, [firmalar, selectedFirmCity, searchTerm]);
 
   const filteredSoforler = useMemo(() => {
-    if (!soforler) return [];
-    if (selectedDriverCity === 'all') return soforler;
-    return soforler.filter(s => s.currentCity === selectedDriverCity);
-  }, [soforler, selectedDriverCity]);
+    let filtered = soforler;
+    if (selectedDriverCity !== 'all') filtered = filtered.filter(s => s.currentCity === selectedDriverCity);
+    if (searchTerm) {
+        const lower = searchTerm.toLowerCase();
+        filtered = filtered.filter(s => `${s.firstName} ${s.lastName}`.toLowerCase().includes(lower));
+    }
+    return filtered;
+  }, [soforler, selectedDriverCity, searchTerm]);
 
-
-  const isLoading = isAuthLoading || isLoadingFirms || isLoadingDrivers || isAdminLoading || isLoadingPersonel;
   const canManageMembers = adminData?.permissions?.canManageMembers;
 
   const handleClaimFirm = async (firmId: string) => {
@@ -106,10 +124,10 @@ export default function AdminUyelerPage() {
             claimedByStaffId: user.uid,
             claimedAt: serverTimestamp(),
         });
-        toast({ title: "Firma İşleme Alındı", description: `Bu firma ${CLAIM_DURATION_MINUTES} dakikalığına sizin tarafınızdan yönetilecek.` });
+        toast({ title: "Firma İşleme Alındı", description: "Müşteri ile iletişime geçebilirsiniz." });
+        fetchMembers();
     } catch (error) {
-        console.error("Error claiming firm:", error);
-        toast({ variant: "destructive", title: "Hata", description: "Firma işleme alınamadı." });
+        toast({ variant: "destructive", title: "Hata", description: "İşlem başarısız." });
     }
   };
 
@@ -121,34 +139,23 @@ export default function AdminUyelerPage() {
               claimedByStaffId: deleteField(),
               claimedAt: deleteField(),
           });
-          toast({ title: "Firma Serbest Bırakıldı", description: "Firma artık diğer personel tarafından işleme alınabilir." });
+          toast({ title: "Firma Bırakıldı", description: "Diğer personel işleme alabilir." });
+          fetchMembers();
       } catch (error) {
-          console.error("Error releasing firm:", error);
-          toast({ variant: "destructive", title: "Hata", description: "Firma serbest bırakılamadı." });
+          toast({ variant: "destructive", title: "Hata", description: "İşlem başarısız." });
       }
   };
-
 
   const handleDeleteConfirmed = async () => {
     if (!entityToDelete || !firestore) return;
     setIsDeleting(true);
-    const memberType = entityToDelete.type;
-    const collectionName = memberType === 'firma' ? 'firms' : 'drivers';
-    const memberDocRef = doc(firestore, collectionName, entityToDelete.id);
-    
+    const collectionName = entityToDelete.type === 'firma' ? 'firms' : 'drivers';
     try {
-        await deleteDoc(memberDocRef);
-        toast({
-            title: "Üye Silindi",
-            description: `"${entityToDelete.name}" adlı ${memberType} sistemden kaldırıldı.`
-        });
+        await deleteDoc(doc(firestore, collectionName, entityToDelete.id));
+        toast({ title: "Başarılı", description: "Üye sistemden silindi." });
+        fetchMembers();
     } catch (error) {
-        console.error(`Error deleting ${memberType}:`, error);
-        toast({
-            variant: "destructive",
-            title: "Hata",
-            description: `Üye silinirken bir hata oluştu.`
-        });
+        toast({ variant: "destructive", title: "Hata", description: "Silme işlemi başarısız." });
     } finally {
         setIsDeleting(false);
         setEntityToDelete(null);
@@ -156,16 +163,12 @@ export default function AdminUyelerPage() {
     }
   };
 
-  if (isLoading) {
-    return <div className="flex h-48 w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  }
-
   if (!adminData?.permissions.canManageMembers) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4 text-center p-4">
-            <h1 className="text-2xl font-bold text-destructive">Erişim Reddedildi</h1>
-            <p className="text-muted-foreground">Bu sayfayı görüntüleme yetkiniz bulunmuyor.</p>
+                <h1 className="text-2xl font-bold text-destructive font-headline">ERİŞİM REDDEDİLDİ</h1>
+                <p className="text-muted-foreground">Üye yönetimi yetkiniz bulunmuyor.</p>
             </div>
         </div>
     );
@@ -173,43 +176,53 @@ export default function AdminUyelerPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight font-headline">Üye Yönetimi</h1>
-          <p className="text-muted-foreground">Platforma kayıtlı firmaları ve şoförleri yönetin.</p>
+          <p className="text-muted-foreground">Platforma kayıtlı tüm paydaşları izleyin.</p>
+        </div>
+        <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+                placeholder="İsimle ara..." 
+                className="pl-9"
+                value={searchTerm}
+                onChange={(e) => setSearchName(e.target.value)}
+            />
         </div>
       </div>
+
       <Tabs defaultValue="firmalar">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="firmalar" className="flex items-center gap-2">
-            <Building className="w-4 h-4" /> Firmalar ({filteredFirmalar?.length || 0})
+            <Building className="w-4 h-4" /> Firmalar ({filteredFirmalar.length})
             </TabsTrigger>
           <TabsTrigger value="soforler" className="flex items-center gap-2">
-            <Truck className="w-4 h-4" /> Şoförler ({filteredSoforler?.length || 0})
+            <Truck className="w-4 h-4" /> Şoförler ({filteredSoforler.length})
             </TabsTrigger>
         </TabsList>
+
         <TabsContent value="firmalar">
           <Card>
             <CardHeader>
-              <CardTitle>Firma Listesi</CardTitle>
-              <CardDescription>Sisteme kayıtlı tüm firmalar.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-4">
-                <Label htmlFor="firm-city-filter" className="text-sm">Şehre Göre Filtrele:</Label>
+              <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle>Firma Listesi</CardTitle>
+                    <CardDescription>Sisteme kayıtlı tüm firmalar.</CardDescription>
+                </div>
                 <Select value={selectedFirmCity} onValueChange={setSelectedFirmCity}>
-                  <SelectTrigger id="firm-city-filter" className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Şehir seçin..." />
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Tüm Şehirler" />
                   </SelectTrigger>
                   <SelectContent>
                     {firmCities.map(city => (
-                      <SelectItem key={city} value={city}>
-                        {city === 'all' ? 'Tüm Şehirler' : city}
-                      </SelectItem>
+                      <SelectItem key={city} value={city}>{city === 'all' ? 'Tüm Şehirler' : city}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+            </CardHeader>
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -217,14 +230,15 @@ export default function AdminUyelerPage() {
                     <TableHead>Telefon</TableHead>
                     <TableHead>Konum</TableHead>
                     <TableHead>İşlem Durumu</TableHead>
-                    <TableHead className="text-right">İletişim & Silme</TableHead>
+                    <TableHead className="text-right">İşlemler</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoadingFirms && <TableRow><TableCell colSpan={5} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
-                  {!isLoadingFirms && filteredFirmalar?.map((firma: any) => {
-                    const isClaimed = firma.claimedAt && (new Date().getTime() - firma.claimedAt.toDate().getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
-                    const isClaimedByCurrentUser = isClaimed && firma.claimedByStaffId === user?.uid;
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={5} className="text-center h-24"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow>
+                  ) : filteredFirmalar.map((firma: any) => {
+                    const isClaimed = firma.claimedAt && (new Date().getTime() - (firma.claimedAt?.toDate?.() || 0).getTime()) < CLAIM_DURATION_MINUTES * 60 * 1000;
+                    const isClaimedByMe = isClaimed && firma.claimedByStaffId === user?.uid;
                     
                     return (
                         <TableRow key={firma.id}>
@@ -233,13 +247,10 @@ export default function AdminUyelerPage() {
                           <TableCell>{firma.city}, {firma.district}</TableCell>
                           <TableCell>
                             {isClaimed ? (
-                                isClaimedByCurrentUser ? (
+                                isClaimedByMe ? (
                                     <Button size="sm" variant="outline" onClick={() => handleReleaseFirm(firma.id)}>Bırak</Button>
                                 ) : (
-                                    <div className="flex items-center gap-2">
-                                        <Button size="sm" disabled>İşleme Alınmış</Button>
-                                        <span className="text-xs text-muted-foreground">({getStaffName(firma.claimedByStaffId)})</span>
-                                    </div>
+                                    <Badge variant="secondary">İşlemde ({getStaffName(firma.claimedByStaffId)})</Badge>
                                 )
                             ) : (
                                 <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleClaimFirm(firma.id)}>
@@ -248,45 +259,41 @@ export default function AdminUyelerPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right space-x-2">
-                            <Button variant="outline" size="sm" asChild><a href={`tel:${firma.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
-                            <Button variant="outline" size="sm" asChild><a href={`sms:${firma.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
-                            <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers} onClick={() => setEntityToDelete({id: firma.id, type: 'firma', name: `${firma.firstName} ${firma.lastName}`})}>
+                            <Button variant="outline" size="icon" asChild><a href={`tel:${firma.phoneNumber}`}><Phone className="h-4 w-4"/></a></Button>
+                            <Button variant="destructive" size="icon" onClick={() => setEntityToDelete({id: firma.id, type: 'firma', name: `${firma.firstName} ${firma.lastName}`})}>
                                 <Trash2 className="h-4 w-4"/>
                             </Button>
                           </TableCell>
                         </TableRow>
                     )
                   })}
-                   {!isLoadingFirms && (!filteredFirmalar || filteredFirmalar.length === 0) && (
-                    <TableRow><TableCell colSpan={5} className="text-center h-24">{selectedFirmCity === 'all' ? 'Kayıtlı firma bulunmuyor.' : 'Bu şehirde kayıtlı firma bulunmuyor.'}</TableCell></TableRow>
-                  )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
+
         <TabsContent value="soforler">
           <Card>
             <CardHeader>
-              <CardTitle>Şoför Listesi</CardTitle>
-              <CardDescription>Sisteme kayıtlı tüm şoförler.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-4">
-                <Label htmlFor="driver-city-filter" className="text-sm">Şehre Göre Filtrele:</Label>
+              <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle>Şoför Listesi</CardTitle>
+                    <CardDescription>Sisteme kayıtlı tüm şoförler.</CardDescription>
+                </div>
                 <Select value={selectedDriverCity} onValueChange={setSelectedDriverCity}>
-                  <SelectTrigger id="driver-city-filter" className="w-auto min-w-[180px]">
-                    <SelectValue placeholder="Şehir seçin..." />
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Tüm Şehirler" />
                   </SelectTrigger>
                   <SelectContent>
                     {driverCities.map(city => (
-                      <SelectItem key={city} value={city}>
-                        {city === 'all' ? 'Tüm Şehirler' : city}
-                      </SelectItem>
+                      <SelectItem key={city} value={city}>{city === 'all' ? 'Tüm Şehirler' : city}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+            </CardHeader>
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -298,64 +305,46 @@ export default function AdminUyelerPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoadingDrivers && <TableRow><TableCell colSpan={5} className="text-center h-24">Yükleniyor...</TableCell></TableRow>}
-                  {!isLoadingDrivers && filteredSoforler?.map((sofor: any) => (
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={5} className="text-center h-24"><Loader2 className="animate-spin mx-auto"/></TableCell></TableRow>
+                  ) : filteredSoforler.map((sofor: any) => (
                     <TableRow key={sofor.id}>
                       <TableCell className="font-medium">{sofor.firstName} {sofor.lastName}</TableCell>
-                      <TableCell>{sofor.currentCity || 'Belirtilmemiş'}</TableCell>
-                      <TableCell>{sofor.vehicleType} - {sofor.vehiclePlate}</TableCell>
+                      <TableCell>{sofor.currentCity || '-'}</TableCell>
+                      <TableCell>{sofor.vehicleType} / {sofor.vehiclePlate}</TableCell>
                       <TableCell>
                          <Badge variant={sofor.isAvailable ? 'default' : 'destructive'} className={cn(sofor.isAvailable ? 'bg-green-600' : 'bg-red-600')}>
                             {sofor.isAvailable ? 'Boşta' : 'Dolu'}
                         </Badge>
                       </TableCell>
                        <TableCell className="text-right space-x-2">
-                         <Button variant="outline" size="sm" asChild><a href={`tel:${sofor.phoneNumber}`}><Phone className="mr-2 h-3 w-3"/> Ara</a></Button>
-                        <Button variant="outline" size="sm" asChild><a href={`sms:${sofor.phoneNumber}`}><MessageCircle className="mr-2 h-3 w-3"/> Mesaj</a></Button>
-                        <Button variant="destructive" size="icon" className="h-8 w-8" disabled={!canManageMembers} onClick={() => setEntityToDelete({id: sofor.id, type: 'sofor', name: `${sofor.firstName} ${sofor.lastName}`})}>
+                         <Button variant="outline" size="icon" asChild><a href={`tel:${sofor.phoneNumber}`}><Phone className="h-4 w-4"/></a></Button>
+                        <Button variant="destructive" size="icon" onClick={() => setEntityToDelete({id: sofor.id, type: 'sofor', name: `${sofor.firstName} ${sofor.lastName}`})}>
                             <Trash2 className="h-4 w-4"/>
                         </Button>
                       </TableCell>
                     </TableRow>
                   ))}
-                   {!isLoadingDrivers && (!filteredSoforler || filteredSoforler.length === 0) && (
-                    <TableRow><TableCell colSpan={5} className="text-center h-24">{selectedDriverCity === 'all' ? 'Kayıtlı şoför bulunmuyor.' : 'Bu şehirde kayıtlı şoför bulunmuyor.'}</TableCell></TableRow>
-                  )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-      <Dialog open={!!entityToDelete} onOpenChange={(isOpen) => {
-          if (!isOpen) {
-              setEntityToDelete(null);
-              setDeleteConfirmText('');
-          }
-      }}>
+
+      <Dialog open={!!entityToDelete} onOpenChange={() => setEntityToDelete(null)}>
           <DialogContent>
               <DialogHeader>
                   <DialogTitle>Üyeyi Kalıcı Olarak Sil</DialogTitle>
                   <DialogDescription>
-                      Bu işlem geri alınamaz. "{entityToDelete?.name}" adlı üyeyi silmek istediğinizden eminseniz, lütfen aşağıdaki alana <strong className="text-foreground">SİL</strong> yazarak onaylayın. (Not: Bu işlem yalnızca üye profilini siler, giriş kaydını kaldırmaz.)
+                      "{entityToDelete?.name}" adlı üyeyi silmek istediğinizden eminseniz "SİL" yazın.
                   </DialogDescription>
               </DialogHeader>
-              <div className="py-4">
-                  <Input 
-                      value={deleteConfirmText}
-                      onChange={(e) => setDeleteConfirmText(e.target.value)}
-                      placeholder='Onaylamak için "SİL" yazın'
-                  />
-              </div>
+              <Input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value.toUpperCase())} placeholder="SİL" />
               <DialogFooter>
-                  <Button variant="outline" onClick={() => { setEntityToDelete(null); setDeleteConfirmText(''); }}>İptal</Button>
-                  <Button 
-                      variant="destructive"
-                      disabled={deleteConfirmText !== 'SİL' || isDeleting}
-                      onClick={handleDeleteConfirmed}
-                  >
-                      {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Silmeyi Onayla
+                  <Button variant="outline" onClick={() => setEntityToDelete(null)}>İptal</Button>
+                  <Button variant="destructive" disabled={deleteConfirmText !== 'SİL' || isDeleting} onClick={handleDeleteConfirmed}>
+                      {isDeleting ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : null} Onayla
                   </Button>
               </DialogFooter>
           </DialogContent>
@@ -363,4 +352,3 @@ export default function AdminUyelerPage() {
     </div>
   );
 }
-    

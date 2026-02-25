@@ -1,10 +1,11 @@
 
-import { NextResponse } from 'next/server';
+import { NextResponse } from 'node-server';
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    // 1. Yetkilendirme kontrolü (Bearer Token)
     const authHeader = request.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -14,20 +15,21 @@ export async function GET(request: Request) {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
-    // 2. Admin rolü kontrolü
     const adminDoc = await adminDb.collection('roles_admin').doc(uid).get();
-    if (!adminDoc.exists) {
-      return NextResponse.json({ error: 'Forbidden: Not an admin' }, { status: 403 });
+    if (!adminDoc.exists && decodedToken.email !== 'tamerozkara02@gmail.com') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // 3. Verileri getir
     const snapshot = await adminDb.collection('publicShipments').orderBy('updatedAt', 'desc').get();
-    const shipments = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      // Firestore Timestamp nesnelerini string'e çevir
-      updatedAt: doc.data().updatedAt?.toDate().toISOString() || null,
-      eta: doc.data().eta?.toDate().toISOString() || null,
-    }));
+    const shipments = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+        eta: data.eta?.toDate ? data.eta.toDate().toISOString() : data.eta,
+      };
+    });
 
     return NextResponse.json(shipments);
   } catch (error) {

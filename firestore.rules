@@ -20,7 +20,7 @@ service cloud.firestore {
     }
 
     // --- Public Shipments ---
-    // Allow 'get' only if they have the specific ID. Deny 'list'.
+    // NO CLIENT LISTING. Only single doc retrieval by ID.
     match /publicShipments/{trackingNo} {
       allow get: if true;
       allow list: if false; 
@@ -37,7 +37,8 @@ service cloud.firestore {
 
     // --- Standard Collections ---
     match /firms/{firmId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if userIsAdmin(); // Only admins can list
       allow create: if isOwner(firmId);
       allow update: if isOwner(firmId) || (userIsAdmin() && getAdminPermissions().canManageMembers == true);
       allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
@@ -51,7 +52,8 @@ service cloud.firestore {
     }
     
     match /drivers/{driverId} {
-      allow get, list: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if userIsAdmin(); // Only admins can list
       allow create: if isOwner(driverId);
       allow update: if isOwner(driverId);
       allow delete: if userIsAdmin() && getAdminPermissions().canManageMembers == true;
@@ -74,8 +76,9 @@ service cloud.firestore {
     }
 
     match /roles_admin/{userId} {
-        // Prioritize isOwner to allow users to read their own role metadata
+        // Individual access for the user themselves
         allow get: if isOwner(userId) || userIsAdmin();
+        // Listing only for admins
         allow list: if userIsAdmin();
         allow create: if (userIsAdmin() && getAdminPermissions().canManageStaff == true) || (request.auth.token.email == 'tamerozkara02@gmail.com' && isOwner(userId));
         allow update: if isOwner(userId) || (userIsAdmin() && getAdminPermissions().canManageStaff == true);
