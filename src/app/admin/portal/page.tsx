@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import { collection, collectionGroup, query, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/table';
 import { Briefcase, Loader2, Edit, Save, Camera, Building, Truck, Users, MapPin } from "lucide-react";
 import { format } from 'date-fns';
 import { useAdmin } from '@/hooks/use-admin';
@@ -21,6 +21,7 @@ import { turkishCities } from '@/lib/cities';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Script from 'next/script';
 
 const CLAIM_DURATION_MINUTES = 30;
 
@@ -30,6 +31,8 @@ function PortalPageContents() {
     const { adminData, isLoading: isAdminLoading } = useAdmin();
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const mapRef = useRef<any>(null);
+    const markersRef = useRef<any[]>([]);
 
     // States for Profile Editing
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -95,6 +98,43 @@ function PortalPageContents() {
     }
 
     const adminAvatar = placeholderImages.find(p => p.id === 'avatar-driver');
+
+    // --- MAP INITIALIZATION ---
+    const initMap = () => {
+        if (typeof window === 'undefined' || !(window as any).L || mapRef.current) return;
+        
+        const L = (window as any).L;
+
+        delete L.Icon.Default.prototype._getIconUrl;
+        L.Icon.Default.mergeOptions({
+            iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+            iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+            shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+        });
+
+        mapRef.current = L.map('portal-map').setView([39.0, 35.0], 6);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(mapRef.current);
+    };
+
+    useEffect(() => {
+        if (!mapRef.current || typeof window === 'undefined' || !(window as any).L) return;
+        const L = (window as any).L;
+
+        // Clear old markers
+        markersRef.current.forEach(marker => marker.remove());
+        markersRef.current = [];
+
+        // Add new markers
+        activeDrivers.forEach((driver: any) => {
+            const marker = L.marker([driver.latitude, driver.longitude])
+                .addTo(mapRef.current)
+                .bindPopup(`<b>${driver.firstName} ${driver.lastName}</b><br>${driver.vehiclePlate}<br>${driver.vehicleType}`);
+            markersRef.current.push(marker);
+        });
+    }, [activeDrivers]);
 
     // --- EFFECTS ---
     useEffect(() => {
@@ -268,12 +308,18 @@ function PortalPageContents() {
                                 : `${activeDrivers.length} aktif şoför konumunu paylaşıyor.`}
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="p-0" style={{ height: '400px' }}>
+                        <CardContent className="p-0 overflow-hidden rounded-b-lg" style={{ height: '400px' }}>
                             {isLoading ? (
-                                <Skeleton className="w-full h-full rounded-b-lg" />
+                                <Skeleton className="w-full h-full" />
                             ) : (
-                                <div className="flex items-center justify-center w-full h-full bg-muted rounded-b-lg">
-                                <p className="text-muted-foreground">Harita özelliği geçici olarak devre dışıdır.</p>
+                                <div className="flex items-center justify-center w-full h-full bg-muted">
+                                    <div id="portal-map" style={{ height: '100%', width: '100%' }}></div>
+                                    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+                                    <Script 
+                                        src="https://unpkg.com/leaflet/dist/leaflet.js" 
+                                        strategy="afterInteractive"
+                                        onLoad={initMap}
+                                    />
                                 </div>
                             )}
                         </CardContent>
