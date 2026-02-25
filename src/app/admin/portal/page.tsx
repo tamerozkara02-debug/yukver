@@ -4,7 +4,14 @@ import { Suspense, useMemo, useState, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
 import { collection, collectionGroup, query, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Briefcase, Loader2, Edit, Save, Camera, Building, Truck, Users, MapPin } from "lucide-react";
 import { format } from 'date-fns';
 import { useAdmin } from '@/hooks/use-admin';
@@ -314,9 +321,9 @@ function PortalPageContents() {
                             ) : (
                                 <div className="flex items-center justify-center w-full h-full bg-muted">
                                     <div id="portal-map" style={{ height: '100%', width: '100%' }}></div>
-                                    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+                                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
                                     <Script 
-                                        src="https://unpkg.com/leaflet/dist/leaflet.js" 
+                                        src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" 
                                         strategy="afterInteractive"
                                         onLoad={initMap}
                                     />
