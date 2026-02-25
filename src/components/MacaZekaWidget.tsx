@@ -20,7 +20,7 @@ type Message = {
 export function MacaZekaWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'bot', text: 'Merhaba! Ben MaçaZeka. Yük durumunuzu öğrenmek için "Yük No: YUK-XXXX-YYYY" şeklinde yazabilir veya bana sorularınızı sorabilirsiniz.' }
+    { role: 'bot', text: 'Merhaba! Ben MaçaZeka. Yük numaranızı (YUK-...) yazarak anlık durumu öğrenebilirsiniz.' }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -36,23 +36,26 @@ export function MacaZekaWidget() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    const trimmedInput = input.trim();
+    if (!trimmedInput || isLoading) return;
 
-    const userMsg = input.trim();
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setMessages(prev => [...prev, { role: 'user', text: trimmedInput }]);
     setInput('');
     setIsLoading(true);
 
     try {
       let role = 'guest';
       if (user && firestore) {
-        // Rolü kontrol et (Basitlik için admin veya user)
         const adminSnap = await getDoc(doc(firestore, 'roles_admin', user.uid));
         if (adminSnap.exists()) role = 'admin';
       }
 
+      // Tracking No tespiti (Basit Regex)
+      const trackingPattern = /YUK-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}|YUK-[A-Z0-9-]+/i;
+      const hasTrackingNo = trackingPattern.test(trimmedInput);
+
       const result = await chatWithMacaZeka({
-        message: userMsg,
+        message: trimmedInput,
         userContext: {
           uid: user?.uid,
           role: role,
@@ -62,7 +65,7 @@ export function MacaZekaWidget() {
 
       setMessages(prev => [...prev, { role: 'bot', text: result.reply }]);
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'bot', text: 'Üzgünüm, şu an yanıt veremiyorum. Lütfen daha sonra tekrar deneyin.' }]);
+      setMessages(prev => [...prev, { role: 'bot', text: 'Üzgünüm, şu an bağlantı sorunu yaşıyorum. Lütfen biraz sonra tekrar deneyin.' }]);
     } finally {
       setIsLoading(false);
     }
@@ -107,11 +110,12 @@ export function MacaZekaWidget() {
           <CardFooter className="p-3 border-t bg-card">
             <div className="flex w-full gap-2">
               <Input 
-                placeholder="Mesajınızı yazın..." 
+                placeholder="Yük No yazın..." 
                 value={input} 
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                 className="flex-1"
+                disabled={isLoading}
               />
               <Button size="icon" onClick={handleSend} disabled={isLoading || !input.trim()}>
                 <Send className="w-4 h-4" />

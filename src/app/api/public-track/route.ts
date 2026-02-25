@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { initializeFirebase } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-// Basit IP bazlı rate limit için bellek içi saklama (Production'da Redis önerilir)
+// IP bazlı basit rate limit
 const rateLimitMap = new Map<string, { count: number, timestamp: number }>();
 const LIMIT = 20;
 const WINDOW_MS = 60 * 1000;
@@ -28,8 +28,8 @@ export async function POST(request: Request) {
 
   try {
     const { trackingNo } = await request.json();
-    if (!trackingNo) {
-      return NextResponse.json({ error: 'Takip numarası gerekli.' }, { status: 400 });
+    if (!trackingNo || typeof trackingNo !== 'string') {
+      return NextResponse.json({ error: 'Geçersiz takip numarası.' }, { status: 400 });
     }
 
     const normalizedNo = trackingNo.trim().toUpperCase();
@@ -38,15 +38,15 @@ export async function POST(request: Request) {
     const shipmentSnap = await getDoc(shipmentRef);
 
     if (!shipmentSnap.exists()) {
-      return NextResponse.json({ error: 'Yük bulunamadı.' }, { status: 404 });
+      return NextResponse.json({ error: 'Yük bulunamadı. Lütfen numarayı kontrol edin.' }, { status: 404 });
     }
 
     const data = shipmentSnap.data();
+    // active=false ise "bulunamadı" mesajı dönmek daha güvenlidir
     if (!data.active) {
-      return NextResponse.json({ error: 'Yük bulunamadı veya takip kapalı.' }, { status: 404 });
+      return NextResponse.json({ error: 'Bu yük numarası için takip şu an kapalı.' }, { status: 404 });
     }
 
-    // Sadece public alanları döndür
     return NextResponse.json({
       trackingNo: data.trackingNo,
       status: data.status,
@@ -58,6 +58,6 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Public track error:', error);
-    return NextResponse.json({ error: 'Sunucu hatası oluştu.' }, { status: 500 });
+    return NextResponse.json({ error: 'Takip sistemi şu an yanıt vermiyor.' }, { status: 500 });
   }
 }

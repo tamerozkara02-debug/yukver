@@ -2,13 +2,13 @@
 'use server';
 /**
  * @fileOverview MaçaZeka AI Chat Flow.
- * Handles tracking queries and operational assistance.
+ * Handles tracking queries using strict tool-based data retrieval.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { initializeFirebase } from '@/firebase';
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 const MacaZekaInputSchema = z.object({
   message: z.string().describe('The user message.'),
@@ -27,7 +27,7 @@ const MacaZekaOutputSchema = z.object({
 const getShipmentTool = ai.defineTool(
   {
     name: 'getShipmentData',
-    description: 'Yük numarasını (YUK-...) kullanarak yük bilgilerini getirir.',
+    description: 'Veritabanından gerçek yük bilgilerini getirir. Sadece yük numarası varsa kullanılır.',
     inputSchema: z.object({ trackingNo: z.string() }),
     outputSchema: z.any(),
   },
@@ -38,12 +38,13 @@ const getShipmentTool = ai.defineTool(
     if (snap.exists() && snap.data().active) {
       const d = snap.data();
       return {
+        found: true,
         status: d.publicStatusText,
         location: d.publicLastSeenArea,
         eta: d.eta ? new Date(d.eta.seconds * 1000).toLocaleString('tr-TR') : 'Bilinmiyor'
       };
     }
-    return null;
+    return { found: false };
   }
 );
 
@@ -55,16 +56,15 @@ const prompt = ai.definePrompt({
   prompt: `Sen MAÇA LOJİSTİK MERKEZİ'nin yapay zeka asistanı MaçaZeka'sın.
   
 Kullanıcı mesajı: "{{{message}}}"
-Kullanıcı Durumu: {{#if userContext.isLoggedIn}}Giriş Yapmış (Rol: {{userContext.role}}){{else}}Giriş Yapmamış{{/if}}
 
 GÖREVLERİN:
-1. Kullanıcı bir yük numarası (YUK-XXXX-YYYY formatında) paylaştıysa getShipmentData aracını kullan.
-2. Eğer yük bilgisi bulunursa, nazikçe durumu, konumu ve tahmini varış süresini Türkçe olarak bildir.
-3. Eğer yük numarası yoksa ve kullanıcı giriş yapmamışsa, takip için yük numarasını yazmasını iste.
-4. SADECE sana verilen araçlardan gelen verilere dayanarak konuş. Veri uydurma.
-5. Cevapların kısa, profesyonel ve yardımcı olsun.
+1. Kullanıcı bir yük numarası (YUK-XXXX-YYYY formatında) verdiyse, MUTLAKA getShipmentData aracını kullan.
+2. Eğer yük bulunursa, sadece araçtan gelen bilgileri (durum, konum, ETA) nazikçe Türkçe olarak metinleştir.
+3. KESİNLİKLE VERİ UYDURMA. Eğer araç "found: false" dönerse, yükün bulunamadığını ve numarayı kontrol etmesini söyle.
+4. Eğer kullanıcı yük numarası yazmadıysa, nazikçe yük takibi için numarasını (Örn: YUK-2026-ABCD-1234) yazmasını iste.
+5. Cevapların kısa, profesyonel ve sadece gerçek verilere dayalı olsun.
 
-ÇIKTI: JSON formatında { "reply": "...", "detectedTrackingNo": "..." }`,
+ÇIKTI FORMATI: { "reply": "Cevabınız buraya", "detectedTrackingNo": "Tespit edilen numara" }`,
 });
 
 export async function chatWithMacaZeka(input: z.infer<typeof MacaZekaInputSchema>) {

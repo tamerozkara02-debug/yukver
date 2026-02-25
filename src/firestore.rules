@@ -16,10 +16,11 @@ service cloud.firestore {
     }
 
     match /publicShipments/{trackingNo} {
-      // Sadece belirli bir doküman ID'si (Tracking No) biliniyorsa okumaya izin ver. Listelemeyi engelle.
+      // GÜVENLİK: Sadece Takip No'yu (Doküman ID) bilen tekil okuma yapabilir.
+      // Toplu listeleme (list) kesinlikle kapalıdır.
       allow get: if true;
       allow list: if false;
-      // Sadece admin yazabilir
+      // Sadece yetkili personel yazabilir/güncelleyebilir
       allow write: if userIsAdmin();
     }
 

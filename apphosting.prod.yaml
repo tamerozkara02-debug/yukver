@@ -1,3 +1,4 @@
+
 runConfig:
   minInstances: 0
 
@@ -20,3 +21,6 @@ env:
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
     value: "1:917559459242:web:0ae9f6e4becada8735bfd3"
     availability: [BUILD, RUNTIME]
+  - variable: GEMINI_API_KEY
+    value: "BURAYA_GEMINI_API_KEY_GELECEK"
+    availability: [RUNTIME]
