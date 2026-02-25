@@ -1,10 +1,11 @@
+
 import type {Metadata} from 'next';
 import "leaflet/dist/leaflet.css";
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider } from '@/firebase';
+import { MacaZekaWidget } from '@/components/MacaZekaWidget';
 
-// Deployment trigger: 2025-02-19-v86 - Full Brand Sync to MAÇA LOJİSTİK MERKEZİ
 export const metadata: Metadata = {
   title: 'MAÇA LOJİSTİK MERKEZİ',
   description: 'Türkiye\'nin Lojistik Ağı',
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <FirebaseClientProvider>
           {children}
+          <MacaZekaWidget />
         </FirebaseClientProvider>
         <Toaster />
       </body>
